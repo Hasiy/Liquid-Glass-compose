@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 玻璃主题名称 -->
+    <string name="glass_theme_drop">水滴</string>
+    <string name="glass_theme_neutral">中性</string>
+    <string name="glass_theme_dark">深色</string>
+    <string name="glass_theme_native">原生</string>
+
+    <!-- Dialog 默认按钮 -->
+    <string name="glass_dialog_confirm">确认</string>
+    <string name="glass_dialog_dismiss">取消</string>
+</resources>

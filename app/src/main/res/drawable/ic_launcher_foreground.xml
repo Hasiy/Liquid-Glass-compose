@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 發光 Pill -->
+    <path
+        android:fillColor="#7E7FEA"
+        android:pathData="M24,50 h60 a10,10 0 0 1 0,20 h-60 a10,10 0 0 1 0,-20 z" />
+    <!-- 高光 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85"
+        android:pathData="M40,57 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 z" />
+</vector>
