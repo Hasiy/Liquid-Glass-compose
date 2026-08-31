@@ -87,7 +87,8 @@ fun GlassCheckbox(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .glassSurface(shape = boxShape, config = config)
+                // 淺色主題下要比所在卡片壓暗一階，方框才有輪廓
+                .glassSurface(shape = boxShape, config = config.asControlSurface())
                 .clickable(
                     enabled = enabled && onCheckedChange != null,
                     onClick = { onCheckedChange?.invoke(!checked) }
@@ -170,7 +171,7 @@ fun GlassRadioButton(
     Box(
         modifier = modifier
             .size(RADIO_SIZE)
-            .glassSurface(shape = CircleShape, config = config)
+            .glassSurface(shape = CircleShape, config = config.asControlSurface())
             .clickable(
                 enabled = enabled && onClick != null,
                 onClick = { onClick?.invoke() }
@@ -233,13 +234,8 @@ fun GlassSlider(
 
     val trackShape = RoundedCornerShape(SLIDER_TRACK_HEIGHT / 2)
     val contentColor = config.contentColor
-    val fillConfig = config.copy(
-        baseColor = contentColor,
-        bodyTopAlpha = if (enabled) 0.55f else 0.22f,
-        bodyBottomAlpha = if (enabled) 0.50f else 0.20f,
-        highlightInnerAlpha = (config.highlightInnerAlpha * 1.4f).coerceAtMost(0.5f),
-        shadowElevation = 0.dp
-    )
+    // 已選段：見 GlassConfig.asFillSurface
+    val fillConfig = config.asFillSurface(enabled)
 
     BoxWithConstraints(
         modifier = modifier
@@ -275,7 +271,10 @@ fun GlassSlider(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(SLIDER_TRACK_HEIGHT)
-                .glassSurface(shape = trackShape, config = config.copy(shadowElevation = 0.dp))
+                .glassSurface(
+                    shape = trackShape,
+                    config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                )
                 .then(
                     if (enabled) {
                         Modifier.pointerInput(Unit) {
@@ -301,7 +300,7 @@ fun GlassSlider(
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .size(SLIDER_THUMB_SIZE)
-                .glassSurface(shape = CircleShape, config = config)
+                .glassSurface(shape = CircleShape, config = config.asControlSurface())
                 .then(
                     if (enabled) {
                         Modifier.pointerInput(Unit) {

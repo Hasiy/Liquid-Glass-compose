@@ -36,6 +36,8 @@
     <string name="glass_progress_minus_desc">减少进度</string>
     <string name="glass_progress_plus_desc">增加进度</string>
     <string name="glass_progress_wide_label">加宽进度条</string>
+    <string name="glass_accent_title">强调色</string>
+    <string name="glass_shadow_title">阴影</string>
     <string name="glass_volume_label">音量条（按住整条即可直接调节）</string>
     <string name="glass_progress_loading">载入中…</string>
     <string name="glass_list_label">玻璃列表</string>

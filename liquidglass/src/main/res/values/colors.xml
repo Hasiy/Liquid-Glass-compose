@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    玻璃主題的配色來源。
+
+    這裡是各主題顏色的權威定義，改配色改這裡即可，不需要動 Kotlin。
+    使用端（app）在自己的 res/values/colors.xml 定義同名資源即可覆蓋，
+    這是 Android 資源合併的標準行為。
+
+    透明度、圓角、陰影高度等非顏色參數仍在 GlassPresets.kt，
+    因為它們是主題的「結構」而不是配色。
+
+    取用方式：@Composable 的 GlassPresets.themed() / drop() / neutral() / dark() / native()。
+    GlassPresets 的靜態欄位不讀資源，僅作為非 Composable 情境的回退值。
+-->
+<resources>
+
+    <!-- 水滴：半透明白玻璃，深色背景 -->
+    <color name="glass_drop_base">#FF9A9AA8</color>
+    <color name="glass_drop_content">#FFFFFFFF</color>
+    <color name="glass_drop_highlight">#FFFFFFFF</color>
+    <color name="glass_drop_border">#FFFFFFFF</color>
+    <color name="glass_drop_page_top">#FF2A1630</color>
+    <color name="glass_drop_page_bottom">#FF0B0D1A</color>
+
+    <!-- 中性：淺灰頁面上的近白卡片 -->
+    <color name="glass_neutral_base">#FFF7F7F7</color>
+    <color name="glass_neutral_content">#FF111111</color>
+    <!-- 淺色表面的柔光是「壓暗」，所以高光色是黑的 -->
+    <color name="glass_neutral_highlight">#FF000000</color>
+    <color name="glass_neutral_border">#FF000000</color>
+    <color name="glass_neutral_page_top">#FFE3E3E3</color>
+    <color name="glass_neutral_page_bottom">#FFD1D1D1</color>
+
+    <!-- 深色玻璃：深色半透明基底 -->
+    <color name="glass_dark_base">#FF2E2E3A</color>
+    <color name="glass_dark_content">#FFFFFFFF</color>
+    <color name="glass_dark_highlight">#FFFFFFFF</color>
+    <color name="glass_dark_border">#FFFFFFFF</color>
+    <color name="glass_dark_page_top">#FF2A1630</color>
+    <color name="glass_dark_page_bottom">#FF0B0D1A</color>
+
+    <!-- 原生：Material3 原生樣式，玻璃色僅在少數回退路徑用到 -->
+    <color name="glass_native_base">#FFCFCFD8</color>
+    <color name="glass_native_content">#FFFFFFFF</color>
+    <color name="glass_native_highlight">#FFFFFFFF</color>
+    <color name="glass_native_border">#FFFFFFFF</color>
+    <color name="glass_native_page_top">#FF2A1630</color>
+    <color name="glass_native_page_bottom">#FF0B0D1A</color>
+
+    <!-- 強調色預設值（各主題共用；僅在 accentEnabled 為 true 時生效） -->
+    <color name="glass_accent">#FF00A15C</color>
+
+</resources>

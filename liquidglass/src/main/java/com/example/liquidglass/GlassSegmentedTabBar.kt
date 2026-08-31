@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -32,6 +33,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+
+/** 軌道相對於表面色的壓暗比例：深色主題壓得重，淺色主題只需要一點層次 */
+private const val DARK_TRACK_DARKEN = 0.78f
+private const val LIGHT_TRACK_DARKEN = 0.10f
 
 /**
  * 可拖動、可點擊的玻璃分段 Tab Bar。這是 SDK 版本，不依賴 Demo app 的資源或 package。
@@ -65,10 +70,16 @@ fun GlassSegmentedTabBar(
     val itemWidth = with(density) { itemWidthPx.toDp() }
     val barShape = RoundedCornerShape(height / 2)
     val indicatorShape = RoundedCornerShape((height - 8.dp) / 2)
+    // 軌道要比滑塊沉一階，滑塊才浮得起來。深色主題往黑壓，淺色主題只需要
+    // 壓一點點——原本寫死 #15151A，在淺色主題下會變成一條突兀的黑帶。
     val barConfig = config.copy(
-        baseColor = Color(0xFF15151A),
-        bodyTopAlpha = 0.55f,
-        bodyBottomAlpha = 0.62f,
+        baseColor = lerp(
+            config.baseColor,
+            Color.Black,
+            if (config.isLightSurface) LIGHT_TRACK_DARKEN else DARK_TRACK_DARKEN
+        ),
+        bodyTopAlpha = if (config.isLightSurface) 0.30f else 0.55f,
+        bodyBottomAlpha = if (config.isLightSurface) 0.34f else 0.62f,
         highlightInnerAlpha = config.highlightInnerAlpha * 0.45f,
         shadowElevation = 10.dp,
     )
@@ -107,7 +118,7 @@ fun GlassSegmentedTabBar(
                     .width(itemWidth)
                     .fillMaxHeight()
                     .padding(4.dp)
-                    .glassSurface(shape = indicatorShape, config = config)
+                    .glassSurface(shape = indicatorShape, config = config.asControlSurface())
             )
         }
 

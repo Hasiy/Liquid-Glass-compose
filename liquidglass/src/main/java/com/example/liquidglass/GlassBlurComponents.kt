@@ -100,9 +100,21 @@ fun GlassPopupBlurBox(
     }
 }
 
-/** 只在呼叫元件的 [shape] 內繪製背景模糊；未提供宿主時使用不可穿字的磨砂降級。 */
+/**
+ * 讓元件在自己的 [shape] 輪廓內，對背後的頁面做高斯模糊（毛玻璃）。
+ *
+ * 用於任何浮在頁面之上、需要透出底層內容的元件——彈層之外，浮動的底部導覽列、
+ * 頂欄、FAB 容器都適用。頁面根節點要包一層 [GlassBackdropHost] 作為取樣來源，
+ * 而這個元件本身必須在 host 的 `overlay` 而不是 `content` 裡，否則會取樣到自己。
+ *
+ * 沒有宿主時降級為不可穿字的磨砂底色，不會變成完全透明。
+ *
+ * @param shape 模糊要裁切成的形狀
+ * @param config 玻璃主題參數，決定模糊半徑與降級時的磨砂濃度
+ * @param blurRadius 覆寫模糊半徑；null 時依序取宿主設定與 [GlassConfig.overlayBlurRadius]
+ */
 @Composable
-internal fun Modifier.glassOverlayBackdrop(
+fun Modifier.glassBackdrop(
     shape: Shape,
     config: GlassConfig,
     blurRadius: Dp? = null,
@@ -127,3 +139,11 @@ internal fun Modifier.glassOverlayBackdrop(
         }
     )
 }
+
+/** SDK 內部沿用的舊名，語義等同 [glassBackdrop] */
+@Composable
+internal fun Modifier.glassOverlayBackdrop(
+    shape: Shape,
+    config: GlassConfig,
+    blurRadius: Dp? = null,
+): Modifier = glassBackdrop(shape = shape, config = config, blurRadius = blurRadius)

@@ -54,17 +54,10 @@ private val NAVIGATION_DRAWER_SHAPE = RoundedCornerShape(topEnd = 28.dp, bottomE
  * 導航項的選中高亮設定。
  *
  * 導航項是疊在已經有玻璃的容器之上，若再套一層完整玻璃基底（含陰影），未選中的項
- * 也會留下一塊看得出邊界的方形色差。這裡只保留很淡的亮面與上緣描邊、去掉陰影，
- * 讓選中項像是容器上浮起的一枚亮片，而不是另一塊獨立的玻璃。
+ * 也會留下一塊看得出邊界的方形色差，所以未選中的項不畫底、只裁形狀。
+ * 選中態的畫法見 [GlassConfig.asSelectedSurface]。
  */
-private fun GlassConfig.asNavigationItemHighlight(): GlassConfig = copy(
-    bodyTopAlpha = bodyTopAlpha * 0.45f,
-    bodyBottomAlpha = bodyBottomAlpha * 0.30f,
-    highlightInnerAlpha = (highlightInnerAlpha * 1.3f).coerceAtMost(0.30f),
-    borderTopAlpha = borderTopAlpha * 0.75f,
-    borderBottomAlpha = 0f,
-    shadowElevation = 0.dp,
-)
+private fun GlassConfig.asNavigationItemHighlight(): GlassConfig = asSelectedSurface()
 
 /** 玻璃導航列高度 */
 private val NAVIGATION_BAR_HEIGHT = 80.dp
@@ -333,7 +326,12 @@ fun RowScope.GlassNavigationBarItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CompositionLocalProvider(
-            LocalContentColor provides config.contentColor.copy(alpha = selectedAlpha)
+            // 啟用強調色時，選中項的圖示/文字與淡底同色；否則沿用內容色
+            LocalContentColor provides if (selected && config.accentEnabled) {
+                config.accentColor
+            } else {
+                config.contentColor.copy(alpha = selectedAlpha)
+            }
         ) {
             icon()
             if (showLabel && label != null) {
@@ -441,7 +439,12 @@ fun GlassNavigationRailItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CompositionLocalProvider(
-            LocalContentColor provides config.contentColor.copy(alpha = selectedAlpha)
+            // 啟用強調色時，選中項的圖示/文字與淡底同色；否則沿用內容色
+            LocalContentColor provides if (selected && config.accentEnabled) {
+                config.accentColor
+            } else {
+                config.contentColor.copy(alpha = selectedAlpha)
+            }
         ) {
             icon()
             if (showLabel && label != null) {

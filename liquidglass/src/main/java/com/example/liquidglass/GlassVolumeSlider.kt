@@ -89,16 +89,8 @@ fun GlassVolumeSlider(
     val fraction = ((value - valueRange.start) / rangeLength).coerceIn(0f, 1f)
     val contentAlpha = if (enabled) 1f else VOLUME_SLIDER_DISABLED_ALPHA
 
-    // 已填充段：把玻璃基底換成內容色並提高不透明度，讓「音量」一眼可辨
-    val fillConfig = config.copy(
-        baseColor = config.contentColor,
-        bodyTopAlpha = if (enabled) 0.58f else 0.22f,
-        bodyBottomAlpha = if (enabled) 0.50f else 0.20f,
-        highlightInnerAlpha = (config.highlightInnerAlpha * 1.3f).coerceAtMost(0.4f),
-        borderTopAlpha = 0f,
-        borderBottomAlpha = 0f,
-        shadowElevation = 0.dp,
-    )
+    // 已填充段：見 GlassConfig.asFillSurface
+    val fillConfig = config.asFillSurface(enabled)
 
     // 手勢回呼在 pointerInput 存活期間不重啟，用 rememberUpdatedState 取最新值
     val currentOnValueChange by rememberUpdatedState(onValueChange)
@@ -140,7 +132,10 @@ fun GlassVolumeSlider(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .glassSurface(shape = trackShape, config = config.copy(shadowElevation = 0.dp))
+            .glassSurface(
+                shape = trackShape,
+                config = config.asControlSurface().copy(shadowElevation = 0.dp)
+            )
             .then(gestureModifier),
         contentAlignment = Alignment.CenterStart
     ) {

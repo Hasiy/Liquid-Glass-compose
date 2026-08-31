@@ -37,8 +37,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,6 +56,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import com.example.liquidglass.GlassConfig
+import com.example.liquidglass.glassBackdrop
+import com.example.liquidglass.isLightSurface
+
+/** 淺色主題下 Bar 底相對表面色的壓暗比例：只需要一點層次，壓多了就變回深色條 */
+private const val LIGHT_BAR_DARKEN = 0.10f
 
 /**
  * 動態光照底部 Tab Bar（Apple Liquid Glass 風格）。
@@ -78,6 +85,21 @@ fun DynamicLightTabBar(
     pillGlassConfig: GlassConfig? = null,
     modifier: Modifier = Modifier
 ) {
+    // 主題派生色：這個 Bar 原本整套是為深色背景寫死的（白反光、白描邊、白字）。
+    // 淺色主題（Neutral）下白色全部不可見，因此改由 pillGlassConfig 推導。
+    val isLight = pillGlassConfig?.isLightSurface == true
+    // 反光/高光用色與混合模式：深色底提亮，淺色底壓暗
+    val glassInk = pillGlassConfig?.highlightColor ?: Color.White
+    val glassBlend = pillGlassConfig?.highlightBlendMode ?: BlendMode.Screen
+    val glassBorderInk = pillGlassConfig?.borderColor ?: Color.White
+    val tabTextColor = pillGlassConfig?.contentColor ?: Color.White
+    // 淺色主題的 Bar 底：從表面色壓深一階，取代寫死的深色 BACKGROUND_COLOR_HEX
+    val barBackgroundColor = if (isLight && pillGlassConfig != null) {
+        lerp(pillGlassConfig.baseColor, Color.Black, LIGHT_BAR_DARKEN)
+    } else {
+        Color(DynamicLightTabBarConfig.BACKGROUND_COLOR_HEX)
+    }
+
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
 
@@ -150,8 +172,22 @@ fun DynamicLightTabBar(
                     renderEffect = barRenderEffect.asComposeRenderEffect()
                 }
             }
+            // 背景模糊：讓底下的頁面內容隱約透出來，而不是清晰穿透。
+            // 需要頁面根節點包一層 GlassBackdropHost，且這個 Bar 要放在它的 overlay 裡。
+            .then(
+                if (pillGlassConfig != null) {
+                    Modifier.glassBackdrop(
+                        shape = RoundedCornerShape(
+                            DynamicLightTabBarConfig.BAR_CORNER_RADIUS_DP.dp
+                        ),
+                        config = pillGlassConfig
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .background(
-                color = Color(DynamicLightTabBarConfig.BACKGROUND_COLOR_HEX)
+                color = barBackgroundColor
                     .copy(alpha = DynamicLightTabBarConfig.BACKGROUND_ALPHA),
                 shape = RoundedCornerShape(DynamicLightTabBarConfig.BAR_CORNER_RADIUS_DP.dp)
             )
@@ -170,8 +206,8 @@ fun DynamicLightTabBar(
                         width = DynamicLightTabBarConfig.GLASS_BORDER_WIDTH_DP.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = DynamicLightTabBarConfig.GLASS_BORDER_TOP_ALPHA),
-                                Color.White.copy(alpha = DynamicLightTabBarConfig.GLASS_BORDER_BOTTOM_ALPHA)
+                                glassBorderInk.copy(alpha = DynamicLightTabBarConfig.GLASS_BORDER_TOP_ALPHA),
+                                glassBorderInk.copy(alpha = DynamicLightTabBarConfig.GLASS_BORDER_BOTTOM_ALPHA)
                             )
                         ),
                         shape = RoundedCornerShape(DynamicLightTabBarConfig.BAR_CORNER_RADIUS_DP.dp)
@@ -251,8 +287,8 @@ fun DynamicLightTabBar(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = DynamicLightTabBarConfig.GLASS_REFLECTION_TOP_ALPHA),
-                                Color.White.copy(alpha = DynamicLightTabBarConfig.GLASS_REFLECTION_BOTTOM_ALPHA)
+                                glassInk.copy(alpha = DynamicLightTabBarConfig.GLASS_REFLECTION_TOP_ALPHA),
+                                glassInk.copy(alpha = DynamicLightTabBarConfig.GLASS_REFLECTION_BOTTOM_ALPHA)
                             ),
                             startY = 0f
                         ),
@@ -270,8 +306,8 @@ fun DynamicLightTabBar(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.10f),
-                                    Color.White.copy(alpha = 0.03f),
+                                    glassInk.copy(alpha = 0.10f),
+                                    glassInk.copy(alpha = 0.03f),
                                     Color.Transparent
                                 ),
                                 center = Offset(touchX, size.height / 2),
@@ -279,7 +315,7 @@ fun DynamicLightTabBar(
                             ),
                             center = Offset(touchX, size.height / 2),
                             radius = size.width * 0.35f,
-                            blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                            blendMode = glassBlend
                         )
                     }
             )
@@ -404,8 +440,8 @@ fun DynamicLightTabBar(
                             drawRect(
                                 brush = Brush.radialGradient(
                                     colorStops = arrayOf(
-                                        0f to Color.White.copy(alpha = pillHighlightInner),
-                                        0.45f to Color.White.copy(alpha = pillHighlightOuter),
+                                        0f to glassInk.copy(alpha = pillHighlightInner),
+                                        0.45f to glassInk.copy(alpha = pillHighlightOuter),
                                         1f to Color.Transparent
                                     ),
                                     center = Offset(
@@ -416,7 +452,7 @@ fun DynamicLightTabBar(
                                 ),
                                 topLeft = Offset.Zero,
                                 size = size,
-                                blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                                blendMode = glassBlend
                             )
                         }
                     }
@@ -424,8 +460,8 @@ fun DynamicLightTabBar(
                         width = 1.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = pillBorderTop),
-                                Color.White.copy(alpha = pillBorderBottom)
+                                glassBorderInk.copy(alpha = pillBorderTop),
+                                glassBorderInk.copy(alpha = pillBorderBottom)
                             )
                         ),
                         shape = indicatorShape
@@ -469,8 +505,8 @@ fun DynamicLightTabBar(
                     BasicText(
                         text = label,
                         style = LocalTextStyle.current.copy(
-                            color = if (selected) Color.White
-                            else Color.White.copy(alpha = DynamicLightTabBarConfig.TAB_TEXT_UNSELECTED_ALPHA),
+                            color = if (selected) tabTextColor
+                            else tabTextColor.copy(alpha = DynamicLightTabBarConfig.TAB_TEXT_UNSELECTED_ALPHA),
                             fontSize = DynamicLightTabBarConfig.TAB_TEXT_SIZE_SP.sp,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                         )

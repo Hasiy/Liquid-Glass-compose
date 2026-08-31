@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,7 +97,7 @@ fun GlassButton(
     ) {
         Box(
             modifier = Modifier
-                .glassSurface(shape = shape, config = config)
+                .glassSurface(shape = shape, config = config.asControlSurface())
                 .defaultMinSize(minHeight = minHeight)
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
@@ -188,7 +189,7 @@ fun GlassIconButton(
     ) {
         Box(
             modifier = Modifier
-                .glassSurface(shape = circleShape, config = config)
+                .glassSurface(shape = circleShape, config = config.asControlSurface())
                 .size(size),
             contentAlignment = Alignment.Center
         ) {
@@ -218,15 +219,26 @@ fun GlassThemeSelector(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        GlassPresets.All.forEach { preset ->
+        // 用 themed() 而非 All：配色以 colors.xml 為準，使用端覆蓋同名資源即可換色
+        GlassPresets.themed().forEachIndexed { index, preset ->
             val isSelected = preset == selected
             GlassButton(
-                text = stringResource(preset.displayNameRes()),
+                text = stringResource(PRESET_NAME_RES[index]),
                 onClick = { onSelect(preset) },
                 modifier = Modifier.weight(1f),
-                // 未選中時調低高光，視覺上退居次位
+                // 選中用一圈描邊標示，未選中則調低高光退居次位。
+                // 每顆按鈕仍以自己的主題渲染，方便預覽該主題的樣子，所以不改底色。
                 config = if (isSelected) {
-                    preset
+                    preset.copy(
+                        borderColor = if (preset.accentEnabled) {
+                            preset.accentColor
+                        } else {
+                            preset.contentColor
+                        },
+                        borderWidth = 2.dp,
+                        borderTopAlpha = 1f,
+                        borderBottomAlpha = 0.75f,
+                    )
                 } else {
                     preset.copy(highlightInnerAlpha = preset.highlightInnerAlpha * 0.4f)
                 },
@@ -236,13 +248,89 @@ fun GlassThemeSelector(
     }
 }
 
-/** 主題對應的顯示名稱資源 ID */
-private fun GlassConfig.displayNameRes(): Int = when (this) {
-    GlassPresets.Drop -> R.string.glass_theme_drop
-    GlassPresets.Neutral -> R.string.glass_theme_neutral
-    GlassPresets.Native -> R.string.glass_theme_native
-    else -> R.string.glass_theme_dark
+/**
+ * 玻璃選色盤：一排可點選的圓形色塊，選中的一顆套上同色外環。
+ *
+ * @param colors 候選顏色
+ * @param selected 目前選中的顏色
+ * @param onSelect 選擇回呼
+ * @param modifier 外部修飾符
+ * @param config 玻璃主題參數
+ * @param swatchSize 色塊直徑
+ */
+@Composable
+fun GlassColorPicker(
+    colors: List<Color>,
+    selected: Color,
+    onSelect: (Color) -> Unit,
+    modifier: Modifier = Modifier,
+    config: GlassConfig = GlassConfig.Default,
+    swatchSize: Dp = 32.dp,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        colors.forEach { color ->
+            val isSelected = color == selected
+            Box(
+                modifier = Modifier
+                    .size(swatchSize + if (isSelected) COLOR_SWATCH_RING_WIDTH * 2 else 0.dp)
+                    .then(
+                        // 選中的色塊套一圈同色外環，靠尺寸差異也能一眼看出
+                        if (isSelected) {
+                            Modifier.border(
+                                width = COLOR_SWATCH_RING_WIDTH,
+                                color = color.copy(alpha = 0.45f),
+                                shape = CircleShape
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(if (isSelected) COLOR_SWATCH_RING_WIDTH + 2.dp else 0.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(swatchSize)
+                        .glassSurface(
+                            shape = CircleShape,
+                            config = config.copy(
+                                baseColor = color,
+                                bodyTopAlpha = 1f,
+                                bodyBottomAlpha = 1f,
+                                highlightInnerAlpha = 0f,
+                                highlightOuterAlpha = 0f,
+                                borderTopAlpha = 0f,
+                                borderBottomAlpha = 0f,
+                                innerShadowAlpha = 0f,
+                                shadowElevation = 0.dp,
+                            )
+                        )
+                        .clickable { onSelect(color) }
+                )
+            }
+        }
+    }
 }
+
+/** 選中色塊的外環寬度 */
+private val COLOR_SWATCH_RING_WIDTH = 2.dp
+
+/**
+ * 主題顯示名稱，順序與 [GlassPresets.themed] 一致。
+ *
+ * 用索引而不是拿 [GlassConfig] 去比對：配色由 colors.xml 決定，使用端覆蓋後
+ * themed() 的值就不再等於靜態的 [GlassPresets.Drop] 等欄位，比對會失準。
+ */
+private val PRESET_NAME_RES = listOf(
+    R.string.glass_theme_drop,
+    R.string.glass_theme_neutral,
+    R.string.glass_theme_dark,
+    R.string.glass_theme_native,
+)
 
 /**
  * 玻璃頂欄（TopBar）：玻璃質感的頂部工具列。
@@ -351,33 +439,32 @@ fun GlassSwitch(
         animationSpec = spring(stiffness = 500f, dampingRatio = 0.6f),
         label = "glassSwitchThumb"
     )
-    // 開啟時 thumb 與 track 高光較亮，形成「點亮」的玻璃開關
-    val effectiveConfig = if (checked) {
-        config.copy(
-            highlightInnerAlpha = (config.highlightInnerAlpha * 1.6f).coerceAtMost(0.5f)
-        )
+    // 開啟時的軌道見 asSelectedSurface；未開啟時用 asControlSurface，
+    // 否則淺色主題的近白軌道會融進同樣是淺色的卡片或頁面
+    val trackConfig = if (checked) {
+        config.asSelectedSurface(strong = true)
     } else {
-        config
+        config.asControlSurface()
     }
     Box(
         modifier = modifier
             .size(trackWidth, trackHeight)
             .glassSurface(
                 shape = RoundedCornerShape(trackHeight / 2),
-                config = effectiveConfig
+                config = trackConfig
             )
             .clickable { onCheckedChange(!checked) }
             .padding(4.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        // thumb：單一玻璃圓鈕
+        // thumb：始終是原本的玻璃圓鈕，不跟著軌道變色，才有「綠軌 + 亮鈕」的對比
         Box(
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .size(thumbSize)
                 .glassSurface(
                     shape = CircleShape,
-                    config = effectiveConfig.copy(highlightRadiusFactor = 1.2f)
+                    config = config.asControlSurface().copy(highlightRadiusFactor = 1.2f)
                 )
         )
     }
@@ -507,7 +594,7 @@ fun GlassListItem(
         }
     }
 
-    val glassModifier = Modifier.glassSurface(shape = shape, config = config)
+    val glassModifier = Modifier.glassSurface(shape = shape, config = config.asControlSurface())
     if (onClick != null) {
         Surface(
             onClick = onClick,
@@ -562,7 +649,7 @@ fun GlassTextField(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .glassSurface(shape = RoundedCornerShape(18.dp), config = config)
+            .glassSurface(shape = RoundedCornerShape(18.dp), config = config.asControlSurface())
             .padding(horizontal = 16.dp, vertical = 13.dp)
     ) {
         BasicTextField(
@@ -621,20 +708,8 @@ fun GlassProgressBar(
         return
     }
     val trackShape = RoundedCornerShape(height / 2)
-    // 亮段：較亮的玻璃質感，無陰影/弱邊框，讓完成區明顯
-    val fillConfig = config.copy(
-        baseColor = lerp(config.baseColor, Color.White, 0.35f),
-        bodyTopAlpha = 0.95f,
-        bodyBottomAlpha = 0.90f,
-        shadowElevation = 0.dp,
-        borderTopAlpha = 0.35f,
-        borderBottomAlpha = 0.05f,
-        highlightCenterX = 0.30f,
-        highlightCenterY = 0.20f,
-        highlightInnerAlpha = 0.35f,
-        highlightOuterAlpha = 0.10f,
-        followTouchHighlight = false,
-    )
+    // 完成段：見 GlassConfig.asFillSurface——啟用強調色時是實色，否則是玻璃質感
+    val fillConfig = config.asFillSurface()
 
     if (indeterminate) {
         val transition = rememberInfiniteTransition(label = "glassProgress")
@@ -652,7 +727,10 @@ fun GlassProgressBar(
             modifier = modifier
                 .fillMaxWidth()
                 .height(height)
-                .glassSurface(shape = trackShape, config = config.copy(shadowElevation = 0.dp))
+                .glassSurface(
+                    shape = trackShape,
+                    config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                )
         ) {
             val segmentWidth = maxWidth * 0.35f
             val slideX = (maxWidth - segmentWidth) * slide
@@ -670,7 +748,10 @@ fun GlassProgressBar(
             modifier = modifier
                 .fillMaxWidth()
                 .height(height)
-                .glassSurface(shape = trackShape, config = config.copy(shadowElevation = 0.dp))
+                .glassSurface(
+                    shape = trackShape,
+                    config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                )
         ) {
             Box(
                 modifier = Modifier

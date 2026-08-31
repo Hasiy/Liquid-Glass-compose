@@ -11,7 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,8 +51,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.liquidglassdemo.R
+import com.example.liquidglass.GlassBackdropHost
 import com.example.liquidglass.GlassButton
 import com.example.liquidglass.GlassCard
+import com.example.liquidglass.GlassColorPicker
+import com.example.liquidglass.GlassConfig
 import com.example.liquidglass.GlassDialog
 import com.example.liquidglass.GlassDialogBlurHost
 import com.example.liquidglass.GlassIconButton
@@ -61,27 +70,48 @@ import com.example.liquidglass.GlassTextField
 import com.example.liquidglass.GlassThemeSelector
 import com.example.liquidglass.GlassTopBar
 import com.example.liquidglass.glassSurface
+import com.example.liquidglass.isLightSurface
 import kotlin.math.roundToInt
 
-/** 頁面底色：暖紫褐 → 深紫 → 深藍黑，讓橙紅與紫藍兩側的光暈都有可融合的底 */
-private val BACKGROUND_TOP = Color(0xFF2A1630)
-private val BACKGROUND_MIDDLE = Color(0xFF19142B)
-private val BACKGROUND_BOTTOM = Color(0xFF0B0D1A)
-
-/** 四角裝飾光暈：橙、紅、紫、藍，透過半透明玻璃元件隱約可見，強化玻璃質感 */
+/**
+ * 四角裝飾光暈：橙、紅、紫、藍，透過半透明玻璃元件隱約可見，強化玻璃質感。
+ *
+ * 頁面底色不在此寫死，改由 [GlassConfig.pageBackgroundTop] / [GlassConfig.pageBackgroundBottom]
+ * 提供，切到淺色的 Neutral 主題時整頁才會跟著變。
+ */
 private val GLOW_ORANGE = Color(0xFFFF7A18)
 private val GLOW_RED = Color(0xFFE0245E)
 private val GLOW_PURPLE = Color(0xFF7B2FF7)
 private val GLOW_BLUE = Color(0xFF00C9FF)
 
+/** Tab Bar 浮層與畫面邊緣的垂直間距 */
+private val TAB_BAR_VERTICAL_PADDING = 8.dp
+
+/** 淺色主題下裝飾光暈的透明度縮放：全開會在淺灰底上顯髒 */
+private const val GLOW_ALPHA_SCALE_LIGHT = 0.25f
+
 /**
  * DynamicLightTabBar 的示範畫面：
- * 橙紅紫藍混合的漸層背景 + 底部半透明毛玻璃 Tab Bar，並展示可套用於任意 UI 的玻璃組件與主題切換。
+ * 依主題渲染的漸層背景 + 底部半透明毛玻璃 Tab Bar，並展示可套用於任意 UI 的玻璃組件與主題切換。
+ *
+ * 主題狀態由呼叫端持有（見 MainActivity），MaterialTheme 才能跟著切深淺。
+ *
+ * @param uiState 主題設定狀態
+ * @param onPresetChange 主題切換回呼，參數為 [DemoThemeUiState.presets] 的索引
+ * @param onAccentEnabledChange 強調色開關回呼
+ * @param onAccentColorChange 強調色選擇回呼
+ * @param onShadowEnabledChange 陰影開關回呼
  */
 @Composable
-fun DynamicLightTabBarDemoScreen() {
+fun DynamicLightTabBarDemoScreen(
+    uiState: DemoThemeUiState,
+    onPresetChange: (Int) -> Unit,
+    onAccentEnabledChange: (Boolean) -> Unit,
+    onAccentColorChange: (Color) -> Unit,
+    onShadowEnabledChange: (Boolean) -> Unit,
+) {
+    val glassTheme = uiState.glassTheme
     var selectedIndex by remember { mutableIntStateOf(0) }
-    var glassTheme by remember { mutableStateOf(GlassPresets.Drop) }
     var buttonClicked by remember { mutableStateOf(false) }
     var switchChecked by remember { mutableStateOf(true) }
     var textValue by remember { mutableStateOf("") }
@@ -93,45 +123,74 @@ fun DynamicLightTabBarDemoScreen() {
         stringResource(R.string.tab_1),
         stringResource(R.string.tab_2),
     )
+    // Tab Bar 是浮層，捲動內容要自己讓出它佔的高度（含它避開導覽列的內距）
+    val bottomInset = WindowInsets.safeDrawing
+        .only(WindowInsetsSides.Bottom)
+        .asPaddingValues()
+        .calculateBottomPadding()
+    val tabBarReservedHeight =
+        DynamicLightTabBarConfig.BAR_HEIGHT_DP.dp + TAB_BAR_VERTICAL_PADDING * 2 + bottomInset
 
-    GlassDialogBlurHost(
-        visible = showDialog,
+    // overlay 裡的東西不算背景取樣來源，所以浮層可以對 content 做背景模糊；
+    // Tab Bar 若留在 content 裡會取樣到自己。
+    GlassBackdropHost(
         modifier = Modifier.fillMaxSize(),
-        dialog = {
-            GlassDialog(
-                onDismissRequest = { showDialog = false },
-                title = stringResource(R.string.glass_dialog_title),
-                message = stringResource(R.string.glass_dialog_message),
-                onConfirm = { showDialog = false },
-                onDismiss = { showDialog = false },
-                config = glassTheme
+        overlay = {
+            // 底部 Tab Bar：浮在內容之上，內容從它的毛玻璃底下捲過去
+            DynamicLightTabBar(
+                items = tabs,
+                selectedIndex = selectedIndex,
+                onSelect = { selectedIndex = it },
+                pillGlassConfig = glassTheme,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    // 與內容區一致用 safeDrawing，橫放時側邊的導覽列與挖孔也一併避開
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                        )
+                    )
+                    .padding(horizontal = 16.dp, vertical = TAB_BAR_VERTICAL_PADDING)
             )
+            if (showDialog) {
+                GlassDialog(
+                    onDismissRequest = { showDialog = false },
+                    title = stringResource(R.string.glass_dialog_title),
+                    message = stringResource(R.string.glass_dialog_message),
+                    onConfirm = { showDialog = false },
+                    onDismiss = { showDialog = false },
+                    config = glassTheme
+                )
+            }
         }
     ) {
-        Column(
+        // 頁面用 Box 疊層：內容鋪滿整個畫面，Tab Bar 浮在最上層。
+        // 原本是 Column 分成上下兩段，Tab Bar 會佔掉版面高度，內容捲到底就停在它上緣，
+        // 看起來像被「墊」在頁面下方而不是浮在頁面上。
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            BACKGROUND_TOP,
-                            BACKGROUND_MIDDLE,
-                            BACKGROUND_BOTTOM
+                            glassTheme.pageBackgroundTop,
+                            lerp(
+                                glassTheme.pageBackgroundTop,
+                                glassTheme.pageBackgroundBottom,
+                                0.5f
+                            ),
+                            glassTheme.pageBackgroundBottom
                         )
                     )
                 )
         ) {
-        // 內容區：weight(1f) 佔滿剩餘空間，與底部 Tab Bar 完全分離，不會互相遮擋
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
             // 裝飾色塊：四角各放一顆光暈（橙、紅、紫、藍），讓背景透過半透明的
-            // 玻璃元件隱約可見，並在畫面中段自然混色，強化玻璃質感
+            // 玻璃元件隱約可見，並在畫面中段自然混色，強化玻璃質感。
+            // 淺色主題（Neutral）的底本身就亮，光暈全開會顯髒，統一調淡。
+            val glowScale = if (glassTheme.isLightSurface) GLOW_ALPHA_SCALE_LIGHT else 1f
             GlowBlob(
                 color = GLOW_ORANGE,
-                alpha = 0.50f,
+                alpha = 0.50f * glowScale,
                 size = 260.dp,
                 alignment = Alignment.TopStart,
                 offsetX = (-70).dp,
@@ -139,7 +198,7 @@ fun DynamicLightTabBarDemoScreen() {
             )
             GlowBlob(
                 color = GLOW_RED,
-                alpha = 0.42f,
+                alpha = 0.42f * glowScale,
                 size = 230.dp,
                 alignment = Alignment.TopEnd,
                 offsetX = 70.dp,
@@ -147,7 +206,7 @@ fun DynamicLightTabBarDemoScreen() {
             )
             GlowBlob(
                 color = GLOW_PURPLE,
-                alpha = 0.55f,
+                alpha = 0.55f * glowScale,
                 size = 280.dp,
                 alignment = Alignment.BottomStart,
                 offsetX = (-80).dp,
@@ -155,7 +214,7 @@ fun DynamicLightTabBarDemoScreen() {
             )
             GlowBlob(
                 color = GLOW_BLUE,
-                alpha = 0.42f,
+                alpha = 0.42f * glowScale,
                 size = 240.dp,
                 alignment = Alignment.BottomEnd,
                 offsetX = 70.dp,
@@ -163,25 +222,86 @@ fun DynamicLightTabBarDemoScreen() {
             )
 
             // 內容：玻璃主題設置 + 組件展示 + 操作提示
+            //
+            // safeDrawing 的頂部內距要加在 verticalScroll **之前**：加在之後的話內距
+            // 屬於捲動內容，一往上捲就跟著跑掉，標題仍會鑽到狀態列與挖孔底下。
+            // 用 safeDrawing 而不是 statusBarsPadding，橫放時的鏡頭挖孔才一併避開。
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                        )
+                    )
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                    .padding(horizontal = 20.dp)
+                    // 底部預留 Tab Bar 的高度：內容可以捲到它底下，但捲到盡頭時
+                    // 最後一項仍露得出來，不會被永久遮住
+                    .padding(top = 24.dp, bottom = 24.dp + tabBarReservedHeight),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 // 玻璃主題設置
                 Text(
                     text = stringResource(R.string.glass_theme_title),
-                    color = Color.White,
+                    color = glassTheme.contentColor,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 GlassThemeSelector(
-                    selected = glassTheme,
-                    onSelect = { glassTheme = it }
+                    selected = uiState.preset,
+                    onSelect = { picked ->
+                        val index = uiState.presets.indexOf(picked)
+                        if (index >= 0) onPresetChange(index)
+                    }
                 )
+
+                // 強調色：開關 + 選色盤。關閉時選中態與填充段回到玻璃質感
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.glass_accent_title),
+                        color = glassTheme.contentColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    GlassSwitch(
+                        checked = uiState.accentEnabled,
+                        onCheckedChange = onAccentEnabledChange,
+                        config = glassTheme
+                    )
+                }
+                if (uiState.accentEnabled) {
+                    GlassColorPicker(
+                        colors = uiState.accentCandidates,
+                        selected = uiState.accentColor,
+                        onSelect = onAccentColorChange,
+                        config = glassTheme
+                    )
+                }
+
+                // 陰影開關：關掉後畫面更平，輪廓改由描邊與內陰影撐住
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.glass_shadow_title),
+                        color = glassTheme.contentColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    GlassSwitch(
+                        checked = uiState.shadowEnabled,
+                        onCheckedChange = onShadowEnabledChange,
+                        config = glassTheme
+                    )
+                }
 
                 // 玻璃組件展示（隨主題切換）
                 GlassTopBar(
@@ -462,31 +582,19 @@ fun DynamicLightTabBarDemoScreen() {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = stringResource(R.string.demo_selected_label, tabs[selectedIndex]),
-                        color = Color.White,
+                        color = glassTheme.contentColor,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.demo_hint),
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = glassTheme.contentColor.copy(alpha = 0.5f),
                         fontSize = 13.sp
                     )
                 }
             }
         }
-
-        // 底部 Tab Bar，固定於畫面最下層；Pill 玻璃效果隨主題切換
-        DynamicLightTabBar(
-            items = tabs,
-            selectedIndex = selectedIndex,
-            onSelect = { selectedIndex = it },
-            pillGlassConfig = glassTheme,
-            modifier = Modifier
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-    }
 
 }
 }

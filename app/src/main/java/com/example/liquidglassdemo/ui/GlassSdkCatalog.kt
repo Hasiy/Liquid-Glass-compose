@@ -112,7 +112,7 @@ fun GlassSdkCatalog(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        CatalogTitle("選擇類")
+        CatalogTitle("選擇類", config)
         GlassCard(config = config) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
@@ -148,7 +148,7 @@ fun GlassSdkCatalog(
             }
         }
 
-        CatalogTitle("Chip、Badge、FAB、Snackbar")
+        CatalogTitle("Chip、Badge、FAB、Snackbar", config)
         GlassCard(config = config) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -204,7 +204,7 @@ fun GlassSdkCatalog(
             }
         }
 
-        CatalogTitle("菜單與輸入")
+        CatalogTitle("菜單與輸入", config)
         GlassCard(config = config) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 GlassSearchBar(
@@ -292,7 +292,7 @@ fun GlassSdkCatalog(
             }
         }
 
-        CatalogTitle("導航類")
+        CatalogTitle("導航類", config)
         GlassSegmentedTabBar(
             items = listOf("首頁", "收藏", "設定"),
             selectedIndex = segmentedIndex,
@@ -352,7 +352,7 @@ fun GlassSdkCatalog(
             }
         }
 
-        CatalogTitle("BottomSheet / ModalBottomSheet")
+        CatalogTitle("BottomSheet / ModalBottomSheet", config)
         GlassCard(config = config) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 GlassBottomSheet(config = config) {
@@ -369,7 +369,7 @@ fun GlassSdkCatalog(
             }
         }
 
-        CatalogTitle("PullToRefresh")
+        CatalogTitle("PullToRefresh", config)
         GlassCard(config = config) {
             GlassPullToRefreshBox(
                 isRefreshing = refreshing,
@@ -427,10 +427,10 @@ fun GlassSdkCatalog(
 }
 
 @Composable
-private fun CatalogTitle(text: String) {
+private fun CatalogTitle(text: String, config: GlassConfig) {
     Text(
         text = text,
-        color = Color.White,
+        color = config.contentColor,
         fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold
     )

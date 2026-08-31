@@ -83,7 +83,7 @@ fun GlassFloatingActionButton(
     ) {
         Box(
             modifier = Modifier
-                .glassSurface(shape = shape, config = config)
+                .glassSurface(shape = shape, config = config.asControlSurface())
                 .defaultMinSize(minWidth = FAB_SIZE, minHeight = FAB_SIZE),
             contentAlignment = Alignment.Center
         ) {
@@ -132,7 +132,7 @@ fun GlassExtendedFloatingActionButton(
     ) {
         Box(
             modifier = Modifier
-                .glassSurface(shape = EXTENDED_FAB_SHAPE, config = config)
+                .glassSurface(shape = EXTENDED_FAB_SHAPE, config = config.asControlSurface())
                 .defaultMinSize(minHeight = 48.dp)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
@@ -181,7 +181,7 @@ fun GlassBadge(
 
     Box(
         modifier = modifier
-            .glassSurface(shape = BADGE_SHAPE, config = config)
+            .glassSurface(shape = BADGE_SHAPE, config = config.asControlSurface())
             .defaultMinSize(minWidth = 6.dp, minHeight = 6.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -314,10 +314,11 @@ fun GlassFilterChip(
         return
     }
 
+    // 選中態：見 GlassConfig.asSelectedSurface
     val effectiveConfig = if (selected) {
-        config.copy(
-            highlightInnerAlpha = (config.highlightInnerAlpha * 1.4f).coerceAtMost(0.5f)
-        )
+        config.asSelectedSurface().let {
+            if (config.accentEnabled) it.copy(contentColor = config.accentColor) else it
+        }
     } else {
         config
     }
@@ -391,7 +392,7 @@ fun GlassInputChip(
     ) {
         Box(
             modifier = Modifier
-                .glassSurface(shape = CHIP_SHAPE, config = effectiveConfig)
+                .glassSurface(shape = CHIP_SHAPE, config = effectiveConfig.asControlSurface())
                 .defaultMinSize(minHeight = 32.dp)
                 .padding(horizontal = CHIP_HORIZONTAL_PADDING, vertical = CHIP_VERTICAL_PADDING),
             contentAlignment = Alignment.Center
@@ -499,7 +500,7 @@ private fun GlassChipSurface(
     ) {
         Box(
             modifier = Modifier
-                .glassSurface(shape = CHIP_SHAPE, config = config)
+                .glassSurface(shape = CHIP_SHAPE, config = config.asControlSurface())
                 .defaultMinSize(minHeight = 32.dp)
                 .padding(horizontal = CHIP_HORIZONTAL_PADDING, vertical = CHIP_VERTICAL_PADDING),
             contentAlignment = Alignment.Center

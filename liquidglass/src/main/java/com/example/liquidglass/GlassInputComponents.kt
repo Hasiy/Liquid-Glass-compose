@@ -106,7 +106,7 @@ fun GlassSearchBar(
             modifier = modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 56.dp)
-                .glassSurface(shape = SEARCH_BAR_SHAPE, config = config)
+                .glassSurface(shape = SEARCH_BAR_SHAPE, config = config.asControlSurface())
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -201,7 +201,7 @@ fun GlassDockedSearchBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 48.dp)
-                .glassSurface(shape = SEARCH_BAR_SHAPE, config = config)
+                .glassSurface(shape = SEARCH_BAR_SHAPE, config = config.asControlSurface())
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -353,7 +353,7 @@ fun GlassDropdownMenuItem(
             // clickable 放在 glassSurface 之後，漣漪才會被 clip 進 8.dp 圓角。
             modifier = modifier
                 .fillMaxWidth()
-                .glassSurface(shape = RoundedCornerShape(8.dp), config = config)
+                .glassSurface(shape = RoundedCornerShape(8.dp), config = config.asControlSurface())
                 .clickable(enabled = enabled, onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -391,7 +391,7 @@ fun GlassExposedDropdownMenuBox(
     val boxModifier = if (config.native) {
         modifier
     } else {
-        modifier.glassSurface(shape = RoundedCornerShape(16.dp), config = config)
+        modifier.glassSurface(shape = RoundedCornerShape(16.dp), config = config.asControlSurface())
     }
 
     ExposedDropdownMenuBox(

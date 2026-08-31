@@ -2,4 +2,16 @@
 <resources>
     <color name="demo_background">#0E0E16</color>
     <color name="ic_launcher_background">#15151A</color>
+
+    <!--
+        強調色候選：設定頁的選色盤。
+        第一個是 SDK 的預設值（liquidglass 的 glass_accent），改那個資源可以換掉全域預設；
+        這裡只是讓使用者在執行期挑選的候選清單。
+    -->
+    <color name="accent_green">#FF00A15C</color>
+    <color name="accent_blue">#FF2F80ED</color>
+    <color name="accent_purple">#FF7B2FF7</color>
+    <color name="accent_orange">#FFFF7A18</color>
+    <color name="accent_red">#FFE0245E</color>
+    <color name="accent_teal">#FF00B8A9</color>
 </resources>
