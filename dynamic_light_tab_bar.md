@@ -488,9 +488,10 @@ val renderEffect = RenderEffect.createRuntimeShaderEffect(shader, "content")
 
 ### 4. 縮放反饋
 
-- **Indicator**：`selectedIndex` 改變時先縮到 0.90 再彈回 1.0
+- **Indicator**：`selectedIndex` 改變時，以舊選項一側為錨點朝新選項方向水平拉伸到 1.15；到位後短暫水平壓縮、垂直回彈，再用 spring 恢復 1.0
 - **Item**：單個 Tab 被按下時縮到 0.88，放開後恢復
-- 使用 `spring()` 讓動畫有彈性，而不是線性插值
+- 拉伸與到位壓縮使用短 `tween()` 保證節奏，最後使用 `spring()` 收尾；快速連續切換會取消上一輪並按最新方向重新開始
+- 倍率、兩段時長和回彈參數集中在 `DynamicLightTabBarConfig` 的 `INDICATOR_STRETCH_*`、`INDICATOR_SETTLE_*`、`SCALE_SPRING_*`
 
 ### 5. 版本降級
 

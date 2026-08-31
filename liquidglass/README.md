@@ -36,7 +36,7 @@ implementation("dev.chrisbanes.haze:haze:1.4.0")
 The module also configures Maven publication coordinates:
 
 ```text
-com.example.liquidglass:liquidglass-compose:1.0.0
+top.hasiyliquidglass:liquidglass-compose:1.0.0
 ```
 
 Run `publishReleasePublicationToMavenLocal` when local Maven consumption is preferred.
@@ -67,11 +67,22 @@ Use `GlassPresets.Drop`, `Neutral`, `Dark`, or `Native`, or create a custom `Gla
 
 ## Blur contracts
 
+The rendering contract has four layers:
+
+```text
+L0  Page background and decoration
+L1  Real page content recorded once by GlassBackdropHost
+L2  Glass surface: backdrop blur/fallback tint, highlight, border, and shadow
+L3  Foreground text, icons, and controls; never blurred
+```
+
 - Wrap each screen once with `GlassBackdropHost`. It records the page as a blur source but never blurs the page itself.
+- A nested `GlassBackdropHost` reuses the outer source instead of creating another capture source.
 - Every SDK overlay applies backdrop blur only inside its own rounded surface: Dialog, Popup, Dropdown/ExposedDropdown, ContextMenu, docked-search results, Tooltip, DatePicker, TimePicker, Drawer, BottomSheet/ModalBottomSheet, and Snackbar.
 - Content outside the overlay stays sharp. Glass modal components also use a transparent Material scrim; the invisible scrim still handles outside-tap dismissal.
+- Pass the same `Shape` to `glassBackdrop`, `glassSurface`, and the Material container so blur, fill, border, and clipping remain aligned.
 - `overlayBlurRadius` in `GlassConfig` controls the default radius. `GlassBackdropHost(blurRadius = ...)`, legacy `GlassDialogBlurHost`, or legacy `GlassPopupBlurBox` can override it for a subtree.
-- If the device cannot render backdrop blur, or the host is omitted, `overlayFallbackAlpha` supplies a denser frosted tint so text behind the surface does not remain sharply readable.
+- API 26–30, a missing host, or another unsupported backdrop path uses `overlayFallbackAlpha` as a denser frosted tint; foreground content remains readable and interactive.
 - `GlassDialogBlurHost` and `GlassPopupBlurBox` remain source-compatible, but their old whole-page/anchor-blur behavior has intentionally been removed.
 
 ```kotlin

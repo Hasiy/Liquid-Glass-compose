@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.liquidglassdemo"
+    namespace = "top.hasiyliquidglassdemo"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.liquidglassdemo"
+        applicationId = "top.hasiyliquidglassdemo"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -53,6 +53,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
 
     implementation(project(":liquidglass"))
+
+    testImplementation(libs.junit)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

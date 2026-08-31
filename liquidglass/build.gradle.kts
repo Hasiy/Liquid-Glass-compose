@@ -5,11 +5,11 @@ plugins {
     id("maven-publish")
 }
 
-group = "com.example.liquidglass"
+group = "top.hasiyliquidglass"
 version = "1.0.0"
 
 android {
-    namespace = "com.example.liquidglass"
+    namespace = "top.hasiyliquidglass"
     compileSdk = 35
 
     defaultConfig {
@@ -63,6 +63,8 @@ dependencies {
     api(libs.androidx.compose.material3)
     api(libs.androidx.compose.material.icons.core)
     implementation(libs.haze)
+
+    testImplementation(libs.junit)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
