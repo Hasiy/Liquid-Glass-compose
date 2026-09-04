@@ -52,7 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
 
-    implementation(project(":liquidglass"))
+    implementation(project(":designsystem"))
 
     testImplementation(libs.junit)
 

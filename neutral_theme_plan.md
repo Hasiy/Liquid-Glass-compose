@@ -289,7 +289,7 @@ val glowAlphaScale = if (glassTheme == GlassPresets.Neutral) 0.25f else 1f
 
 ## 10. 实施记录
 
-计划的 6 步已全部落地，`:liquidglass:assembleRelease` 与 `:app:assembleDebug` 均构建通过。**尚未真机验证**（实施期间设备断连）。
+计划的 6 步已全部落地，`:designsystem:assembleRelease` 与 `:app:assembleDebug` 均构建通过。**尚未真机验证**（实施期间设备断连）。
 
 ### 按计划完成
 

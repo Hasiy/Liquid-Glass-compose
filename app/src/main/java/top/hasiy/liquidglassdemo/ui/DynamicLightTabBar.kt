@@ -60,9 +60,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import top.hasiyliquidglass.GlassConfig
-import top.hasiyliquidglass.glassBackdrop
-import top.hasiyliquidglass.isLightSurface
+import top.hasiy.designsystem.GlassConfig
+import top.hasiy.designsystem.glassBackdrop
+import top.hasiy.designsystem.isLightSurface
 
 /** 淺色主題下 Bar 底相對表面色的壓暗比例：只需要一點層次，壓多了就變回深色條 */
 private const val LIGHT_BAR_DARKEN = 0.10f

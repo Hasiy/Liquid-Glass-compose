@@ -10,4 +10,5 @@
 local.properties
 .kotlin/
 app/build/
-liquidglass/build/
+designsystem/build/
+designsystem-tokens/build/

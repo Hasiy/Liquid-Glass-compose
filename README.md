@@ -1,11 +1,11 @@
-# Liquid Glass for Compose
+# Hasiy Design System for Compose
 
-一套 Jetpack Compose 的液态玻璃（Liquid Glass）组件库，外加一个把所有组件都摆出来的示例 app。
+一套可复用的 Jetpack Compose 设计系统 SDK，当前内置液态玻璃（Liquid Glass）组件风格，并附带完整示例 app。
 
 玻璃质感由一个 `Modifier.glassSurface` 提供 —— 半透明基底渐变、跟随手指的柔光、边缘描边、接触阴影 —— 再往上包出 Material 3 常用组件的玻璃版本。整套视觉由一个 `GlassConfig` 驱动，可以在深色玻璃与浅色中性两种完全不同的风格之间切换，而不用改任何组件代码。
 
 ```
-├── liquidglass/    SDK，可独立发布的 Android Library，不依赖 demo 的任何资源
+├── designsystem/    SDK，可独立发布的 Android Library，不依赖 demo 的任何资源
 └── app/            示例 app，展示全部组件 + 主题实时切换
 ```
 
@@ -51,17 +51,17 @@
 
 ```kotlin
 dependencies {
-    implementation(project(":liquidglass"))
+    implementation(project(":designsystem"))
 }
 ```
 
 或者打成 AAR：
 
 ```bash
-./gradlew :liquidglass:assembleRelease
+./gradlew :designsystem:assembleRelease
 ```
 
-产物在 `liquidglass/build/outputs/aar/liquidglass-release.aar`。**直接拷贝 AAR** 时（而不是通过 module 或 Maven 依赖）需要自己补上模糊引擎，因为裸 AAR 不带传递依赖：
+产物在 `designsystem/build/outputs/aar/hasiy-design-system-release.aar`。**直接拷贝 AAR** 时（而不是通过 module 或 Maven 依赖）需要自己补上模糊引擎，因为裸 AAR 不带传递依赖：
 
 ```kotlin
 implementation("dev.chrisbanes.haze:haze:1.4.0")
@@ -70,17 +70,17 @@ implementation("dev.chrisbanes.haze:haze:1.4.0")
 也可以走本地 Maven：
 
 ```bash
-./gradlew :liquidglass:publishReleasePublicationToMavenLocal
+./gradlew :designsystem:publishReleasePublicationToMavenLocal
 ```
 
 ```text
-top.hasiyliquidglass:liquidglass-compose:1.0.0
+top.hasiy:hasiy-design-system-compose:1.0.0
 ```
 
 ### 最小示例
 
 ```kotlin
-import top.hasiy.liquidglass.*
+import top.hasiy.designsystem.*
 
 @Composable
 fun Screen() {
@@ -171,7 +171,7 @@ onSizeChanged → shadow（阴影在裁切外侧）→ 柔和外阴影 → clip�
 
 ### 用 colors.xml 换配色
 
-配色的权威来源是 `liquidglass/src/main/res/values/colors.xml`，换色不用动 Kotlin。使用端在自己的 `res/values/colors.xml` 里声明同名资源即可覆盖（Android 资源合并的标准行为）：
+配色的权威来源是 `designsystem/src/main/res/values/colors.xml`，换色不用动 Kotlin。使用端在自己的 `res/values/colors.xml` 里声明同名资源即可覆盖（Android 资源合并的标准行为）：
 
 ```xml
 <!-- app/src/main/res/values/colors.xml -->
@@ -354,19 +354,20 @@ SideEffect {
 
 ```bash
 # 编译 SDK
-./gradlew :liquidglass:assembleRelease
+./gradlew :designsystem:assembleRelease
 
 # 编译并安装 demo
 ./gradlew :app:installDebug
 
 # 发布到本地 Maven
-./gradlew :liquidglass:publishReleasePublicationToMavenLocal
+./gradlew :designsystem:publishReleasePublicationToMavenLocal
 ```
 
 ---
 
 ## 相关文档
 
-- [liquidglass/README.md](liquidglass/README.md) — SDK 的 API 说明与模糊契约（英文）
+- [designsystem/README.md](designsystem/README.md) — SDK 的 API 说明与模糊契约（英文）
+- [design-system-architecture.md](design-system-architecture.md) — SDK 模块边界、主题模型、依赖方向与扩展约定
 - [neutral_theme_plan.md](neutral_theme_plan.md) — Neutral 浅色主题的完整改造方案与实施记录，包含每一轮调整的原因
 - [dynamic_light_tab_bar.md](dynamic_light_tab_bar.md) — 动态光照 Tab Bar 的设计说明

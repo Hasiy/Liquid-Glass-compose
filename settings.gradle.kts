@@ -20,6 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LiquidGlassDemo"
+rootProject.name = "HasiyDesignSystemDemo"
 include(":app")
-include(":liquidglass")
+include(":designsystem")
+include(":designsystem-tokens")

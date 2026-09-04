@@ -82,7 +82,7 @@ L3  前景内容：文字、图标和交互控件，始终保持清晰
 - `DynamicLightTabBarLogicTest` 覆盖左右拉伸方向、触点边界、无效尺寸和取消回位。
 - API 33+ 保持 AGSL；API 33 以下保持 Compose 渐层。背景模糊的 API 26–30 回退由 SDK 层统一处理。
 - Drop、Dark、Neutral 的视觉与真机 TalkBack/拖动验收仍需在可构建环境执行，结果不得仅以代码检查代替。
-- 当前 Windows 桌面沙箱需为 Gradle 进程指定短 `TEMP/TMP`，避免 JDK NIO 的 AF_UNIX 管道路径过长。使用 `C:\Windows\Temp` 后，`:liquidglass:testDebugUnitTest` 与 `:app:testDebugUnitTest` 已通过；已连接设备 `PLJ110` 的视觉/TalkBack 验收仍待补跑。
+- 当前 Windows 桌面沙箱需为 Gradle 进程指定短 `TEMP/TMP`，避免 JDK NIO 的 AF_UNIX 管道路径过长。使用 `C:\Windows\Temp` 后，`:designsystem:testDebugUnitTest` 与 `:app:testDebugUnitTest` 已通过；已连接设备 `PLJ110` 的视觉/TalkBack 验收仍待补跑。
 
 ## 4. 性能守则
 

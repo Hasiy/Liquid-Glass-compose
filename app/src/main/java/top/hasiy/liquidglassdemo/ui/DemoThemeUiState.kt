@@ -2,7 +2,7 @@ package top.hasiyliquidglassdemo.ui
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import top.hasiyliquidglass.GlassConfig
+import top.hasiy.designsystem.GlassConfig
 
 /**
  * 示範畫面的主題設定狀態。

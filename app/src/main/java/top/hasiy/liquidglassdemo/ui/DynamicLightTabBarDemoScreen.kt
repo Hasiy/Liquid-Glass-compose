@@ -51,26 +51,26 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.hasiyliquidglassdemo.R
-import top.hasiyliquidglass.GlassBackdropHost
-import top.hasiyliquidglass.GlassButton
-import top.hasiyliquidglass.GlassCard
-import top.hasiyliquidglass.GlassColorPicker
-import top.hasiyliquidglass.GlassConfig
-import top.hasiyliquidglass.GlassDialog
-import top.hasiyliquidglass.GlassDialogBlurHost
-import top.hasiyliquidglass.GlassIconButton
-import top.hasiyliquidglass.GlassListItem
-import top.hasiyliquidglass.GlassPopup
-import top.hasiyliquidglass.GlassPopupBlurBox
-import top.hasiyliquidglass.GlassPresets
-import top.hasiyliquidglass.GlassProgressBar
-import top.hasiyliquidglass.GlassVolumeSlider
-import top.hasiyliquidglass.GlassSwitch
-import top.hasiyliquidglass.GlassTextField
-import top.hasiyliquidglass.GlassThemeSelector
-import top.hasiyliquidglass.GlassTopBar
-import top.hasiyliquidglass.glassSurface
-import top.hasiyliquidglass.isLightSurface
+import top.hasiy.designsystem.GlassBackdropHost
+import top.hasiy.designsystem.GlassButton
+import top.hasiy.designsystem.GlassCard
+import top.hasiy.designsystem.GlassColorPicker
+import top.hasiy.designsystem.GlassConfig
+import top.hasiy.designsystem.GlassDialog
+import top.hasiy.designsystem.GlassDialogBlurHost
+import top.hasiy.designsystem.GlassIconButton
+import top.hasiy.designsystem.GlassListItem
+import top.hasiy.designsystem.GlassPopup
+import top.hasiy.designsystem.GlassPopupBlurBox
+import top.hasiy.designsystem.GlassPresets
+import top.hasiy.designsystem.GlassProgressBar
+import top.hasiy.designsystem.GlassVolumeSlider
+import top.hasiy.designsystem.GlassSwitch
+import top.hasiy.designsystem.GlassTextField
+import top.hasiy.designsystem.GlassThemeSelector
+import top.hasiy.designsystem.GlassTopBar
+import top.hasiy.designsystem.glassSurface
+import top.hasiy.designsystem.isLightSurface
 import kotlin.math.roundToInt
 
 /**
@@ -575,7 +575,7 @@ fun DynamicLightTabBarDemoScreen(
                     }
                 }
 
-                // :liquidglass SDK 完整元件目錄
+                // :designsystem SDK 完整元件目錄
                 GlassSdkCatalog(config = glassTheme)
 
                 // 操作提示

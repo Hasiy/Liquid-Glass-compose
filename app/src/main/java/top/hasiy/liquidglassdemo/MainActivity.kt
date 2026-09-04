@@ -15,8 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.colorResource
 import androidx.core.view.WindowCompat
-import top.hasiyliquidglass.GlassPresets
-import top.hasiyliquidglass.isLightSurface
+import top.hasiy.designsystem.GlassPresets
+import top.hasiy.designsystem.isLightSurface
 import top.hasiyliquidglassdemo.ui.DemoThemeUiState
 import top.hasiyliquidglassdemo.ui.DynamicLightTabBarDemoScreen
 import top.hasiyliquidglassdemo.ui.theme.LiquidGlassDemoTheme
