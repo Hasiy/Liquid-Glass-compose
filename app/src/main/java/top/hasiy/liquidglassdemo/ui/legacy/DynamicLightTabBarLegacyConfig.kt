@@ -1,4 +1,4 @@
-package top.hasiyliquidglassdemo.ui
+package top.hasiyliquidglassdemo.ui.legacy
 
 import androidx.compose.animation.core.Spring
 
@@ -8,7 +8,7 @@ import androidx.compose.animation.core.Spring
  * 所有跟「動態光影、毛玻璃、動畫、尺寸」相關的數值集中於此，方便直接微調，
  * 不需進到 [DynamicLightTabBar] 主體。
  */
-object DynamicLightTabBarConfig {
+object DynamicLightTabBarLegacyConfig {
 
     // ---------- 尺寸 ----------
     /** Tab Bar 高度 */
@@ -20,49 +20,8 @@ object DynamicLightTabBarConfig {
     /** Pill（選中指示器）圓角 */
     const val INDICATOR_CORNER_RADIUS_DP = 32
 
-    // ---------- 選中 Lens（凸透鏡）幾何 ----------
-    /** Lens 高度：比 Bar 高約 12dp，上下各突出 6dp */
-    const val LENS_HEIGHT_DP = 84
-
-    /** Lens 寬度倍率（相對於單一槽位寬度）；1.45 可輕微侵入相鄰項 */
-    const val LENS_WIDTH_FACTOR = 1.45f
-
-    /** Lens 膠囊圓角（接近半高，形成飽滿凸透鏡） */
-    const val LENS_CORNER_RADIUS_DP = 40
-
-    /** Lens 內垂直內縮（dp）：讓材質在突出高度內保留邊距 */
-    const val LENS_VERTICAL_PADDING_DP = 2
-
-    // ---------- 選中 Lens 視覺效果 ----------
-    /** 是否採用「內容採樣折射」（AGSL，內容放大/色散）；false 則用下方漸層玻璃鏡面（預設，無重影） */
-    const val LENS_REFRACTION_ENABLED_DEFAULT = false
-
-    /** 折射模式：內容放大倍率（>1 產生凸透鏡放大感） */
-    const val LENS_MAGNIFICATION = 1.06f
-
-    /** 折射模式：邊緣 RGB 分通道偏移量（px），產生色散 */
-    const val LENS_CHROMATIC_PX = 1.5f
-
-    /** 折射模式：內容放大後的輕微徑向扭曲強度（0~1） */
-    const val LENS_DISTORTION = 0.02f
-
-    /** 膠囊邊緣 Fresnel 高光強度（0~1）：強調 Lens 輪廓 */
-    const val LENS_FRESNEL_STRENGTH = 0.18f
-
-    /** Lens 邊緣額外的彩色折射帶強度（0~1） */
-    const val LENS_EDGE_CHROMATIC_STRENGTH = 0.12f
-
     /** Tab 文字大小（sp） */
     const val TAB_TEXT_SIZE_SP = 13
-
-    /** Tab 圖標大小（dp），圖標在上、標籤在下 */
-    const val TAB_ICON_SIZE_DP = 22
-
-    /** Tab 圖標與標籤之間的間距（dp） */
-    const val TAB_ICON_LABEL_SPACING_DP = 3
-
-    /** 中央主操作按鈕直徑（dp），不參與選中索引 */
-    const val CENTER_ACTION_SIZE_DP = 48
 
     // ---------- 光暈參數（AGSL RuntimeShader）----------
     /**
@@ -71,8 +30,8 @@ object DynamicLightTabBarConfig {
      */
     const val BAR_GLOW_RADIUS_FACTOR = 1.05f
 
-    /** 整條 Bar 的光暈強度（0.0~1.0）；越高越亮。深色材質下降低，避免中心過亮 */
-    const val BAR_GLOW_INTENSITY = 0.12f
+    /** 整條 Bar 的光暈強度（0.0~1.0）；越高越亮 */
+    const val BAR_GLOW_INTENSITY = 0.20f
 
     /**
      * Pill 內補光半徑倍率（相對於 item 寬度）。
@@ -81,17 +40,17 @@ object DynamicLightTabBarConfig {
     const val INDICATOR_GLOW_RADIUS_FACTOR = 0.72f
 
     /** Pill 內補光強度（0.0~1.0） */
-    const val INDICATOR_GLOW_INTENSITY = 0.03f
+    const val INDICATOR_GLOW_INTENSITY = 0.035f
 
     // ---------- 背景玻璃感 ----------
-    /** 背景主色（近黑灰，較高不透明度時呈現深色玻璃條） */
-    val BACKGROUND_COLOR_HEX: Long = 0xFF1A1A1E
+    /** 背景主色（淺灰白，低透明度時呈現通透毛玻璃感） */
+    val BACKGROUND_COLOR_HEX: Long = 0xFF8A8A9A
 
-    /** 背景透明度（0.0~1.0）；深色材質下提高，避免偏亮偏紫 */
-    const val BACKGROUND_ALPHA = 0.62f
+    /** 背景透明度（0.0~1.0）；越低越透、越能看見底層內容 */
+    const val BACKGROUND_ALPHA = 0.22f
 
     /** 玻璃頂部反光渐变起始透明度（0.0~1.0），越高玻璃感越强 */
-    const val GLASS_REFLECTION_TOP_ALPHA = 0.08f
+    const val GLASS_REFLECTION_TOP_ALPHA = 0.14f
 
     /** 玻璃頂部反光渐变结束透明度 */
     const val GLASS_REFLECTION_BOTTOM_ALPHA = 0.02f
@@ -112,17 +71,17 @@ object DynamicLightTabBarConfig {
     /** 邊緣描邊底部（漸淡）透明度 */
     const val GLASS_BORDER_BOTTOM_ALPHA = 0.05f
 
-    /** 外陰影環境光顏色（黑色環境陰影，移除藍紫外發光） */
-    val OUTER_SHADOW_AMBIENT_HEX: Long = 0xFF000000
+    /** 外陰影環境光顏色 */
+    val OUTER_SHADOW_AMBIENT_HEX: Long = 0xFF4444FF
 
     /** 外陰影環境光透明度 */
-    const val OUTER_SHADOW_AMBIENT_ALPHA = 0.35f
+    const val OUTER_SHADOW_AMBIENT_ALPHA = 0.12f
 
-    /** 外陰影聚光顏色（黑色） */
-    val OUTER_SHADOW_SPOT_HEX: Long = 0xFF000000
+    /** 外陰影聚光顏色 */
+    val OUTER_SHADOW_SPOT_HEX: Long = 0xFF4444FF
 
     /** 外陰影聚光透明度 */
-    const val OUTER_SHADOW_SPOT_ALPHA = 0.25f
+    const val OUTER_SHADOW_SPOT_ALPHA = 0.08f
 
     /** 外陰影高度（dp） */
     const val OUTER_SHADOW_ELEVATION_DP = 16
@@ -131,8 +90,8 @@ object DynamicLightTabBarConfig {
     /** 是否啟用水滴質感（荷葉上水滴的視覺） */
     const val WATER_DROP_ENABLED = true
 
-    /** Pill 背景主色（暗灰玻璃，貼合參考圖的深色 Lens） */
-    val INDICATOR_BACKGROUND_HEX: Long = 0xFF2A2A30
+    /** Pill 背景主色（半透明白玻璃，讓底下深色透出形成磨砂玻璃感） */
+    val INDICATOR_BACKGROUND_HEX: Long = 0xFF9A9AA8
 
     /**
      * 水滴主體：頂部高光 → 中間主色 → 底部聚光的垂直漸層。

@@ -28,8 +28,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,6 +73,7 @@ import top.hasiy.designsystem.GlassThemeSelector
 import top.hasiy.designsystem.GlassTopBar
 import top.hasiy.designsystem.glassSurface
 import top.hasiy.designsystem.isLightSurface
+import top.hasiyliquidglassdemo.ui.legacy.DynamicLightTabBarLegacy
 import kotlin.math.roundToInt
 
 /**
@@ -118,10 +121,32 @@ fun DynamicLightTabBarDemoScreen(
     var progress by remember { mutableStateOf(0.6f) }
     var showDialog by remember { mutableStateOf(false) }
     var showPopup by remember { mutableStateOf(false) }
+    var centerActionClicked by remember { mutableStateOf(false) }
+    // Lens 折射效果開關：純玻璃鏡面（預設） vs 內容採樣折射（可選）
+    var refractionEnabled by remember { mutableStateOf(DynamicLightTabBarConfig.LENS_REFRACTION_ENABLED_DEFAULT) }
+    // 樣式切換：原始（Legacy，改動前） vs 新版（Liquid Glass 參考效果）
+    var useLegacyStyle by remember { mutableStateOf(false) }
     val tabs = listOf(
-        stringResource(R.string.tab_0),
-        stringResource(R.string.tab_1),
-        stringResource(R.string.tab_2),
+        DynamicLightTabItem(
+            key = "tab0",
+            label = stringResource(R.string.tab_0),
+            icon = Icons.Default.Home,
+        ),
+        DynamicLightTabItem(
+            key = "tab1",
+            label = stringResource(R.string.tab_1),
+            icon = Icons.Default.Search,
+        ),
+        DynamicLightTabItem(
+            key = "tab2",
+            label = stringResource(R.string.tab_2),
+            icon = Icons.Default.Favorite,
+        ),
+        DynamicLightTabItem(
+            key = "tab3",
+            label = stringResource(R.string.tab_3),
+            icon = Icons.Default.Settings,
+        ),
     )
     // Tab Bar 是浮層，捲動內容要自己讓出它佔的高度（含它避開導覽列的內距）
     val bottomInset = WindowInsets.safeDrawing
@@ -129,29 +154,75 @@ fun DynamicLightTabBarDemoScreen(
         .asPaddingValues()
         .calculateBottomPadding()
     val tabBarReservedHeight =
-        DynamicLightTabBarConfig.BAR_HEIGHT_DP.dp + TAB_BAR_VERTICAL_PADDING * 2 + bottomInset
+        DynamicLightTabBarConfig.LENS_HEIGHT_DP.dp + TAB_BAR_VERTICAL_PADDING * 2 + bottomInset
 
     // overlay 裡的東西不算背景取樣來源，所以浮層可以對 content 做背景模糊；
     // Tab Bar 若留在 content 裡會取樣到自己。
     GlassBackdropHost(
         modifier = Modifier.fillMaxSize(),
         overlay = {
-            // 底部 Tab Bar：浮在內容之上，內容從它的毛玻璃底下捲過去
-            DynamicLightTabBar(
-                items = tabs,
-                selectedIndex = selectedIndex,
-                onSelect = { selectedIndex = it },
-                pillGlassConfig = glassTheme,
+            // 樣式與折射開關（可即時切換：原始樣式 vs 新版 Liquid Glass 效果）
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    // 與內容區一致用 safeDrawing，橫放時側邊的導覽列與挖孔也一併避開
                     .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
-                        )
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
                     )
-                    .padding(horizontal = 16.dp, vertical = TAB_BAR_VERTICAL_PADDING)
-            )
+                    .padding(
+                        bottom = DynamicLightTabBarConfig.LENS_HEIGHT_DP.dp
+                            + TAB_BAR_VERTICAL_PADDING * 2 + 12.dp
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("原始樣式")
+                GlassSwitch(
+                    checked = useLegacyStyle,
+                    onCheckedChange = { useLegacyStyle = it },
+                    config = glassTheme
+                )
+                Text("Lens 折射")
+                GlassSwitch(
+                    checked = refractionEnabled,
+                    onCheckedChange = { refractionEnabled = it },
+                    config = glassTheme
+                )
+            }
+            // 底部 Tab Bar：浮在內容之上，內容從它的毛玻璃底下捲過去
+            if (useLegacyStyle) {
+                DynamicLightTabBarLegacy(
+                    items = tabs.map { it.label },
+                    selectedIndex = selectedIndex,
+                    onSelect = { selectedIndex = it },
+                    pillGlassConfig = glassTheme,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        // 與內容區一致用 safeDrawing，橫放時側邊的導覽列與挖孔也一併避開
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                            )
+                        )
+                        .padding(horizontal = 16.dp, vertical = TAB_BAR_VERTICAL_PADDING)
+                )
+            } else {
+                DynamicLightTabBar(
+                    items = tabs,
+                    selectedIndex = selectedIndex,
+                    onSelect = { selectedIndex = it },
+                    pillGlassConfig = glassTheme,
+                    lensRefractionEnabled = refractionEnabled,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        // 與內容區一致用 safeDrawing，橫放時側邊的導覽列與挖孔也一併避開
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                            )
+                        )
+                        .padding(horizontal = 16.dp, vertical = TAB_BAR_VERTICAL_PADDING)
+                )
+            }
             if (showDialog) {
                 GlassDialog(
                     onDismissRequest = { showDialog = false },
@@ -581,11 +652,19 @@ fun DynamicLightTabBarDemoScreen(
                 // 操作提示
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = stringResource(R.string.demo_selected_label, tabs[selectedIndex]),
+                        text = stringResource(R.string.demo_selected_label, tabs[selectedIndex].label),
                         color = glassTheme.contentColor,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+                    if (centerActionClicked) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.center_action_clicked),
+                            color = glassTheme.contentColor.copy(alpha = 0.7f),
+                            fontSize = 13.sp
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.demo_hint),
