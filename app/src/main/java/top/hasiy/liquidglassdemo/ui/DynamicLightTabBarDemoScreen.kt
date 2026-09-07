@@ -1,5 +1,8 @@
 package top.hasiyliquidglassdemo.ui
 
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +36,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,7 +77,9 @@ import top.hasiy.designsystem.GlassThemeSelector
 import top.hasiy.designsystem.GlassTopBar
 import top.hasiy.designsystem.glassSurface
 import top.hasiy.designsystem.isLightSurface
-import top.hasiyliquidglassdemo.ui.legacy.DynamicLightTabBarLegacy
+import top.hasiy.designsystem.legacy.DynamicLightTabBarLegacy
+import top.hasiy.designsystem.GlassLensTabBar
+import top.hasiy.designsystem.GlassLensTabItem
 import kotlin.math.roundToInt
 
 /**
@@ -112,7 +118,9 @@ fun DynamicLightTabBarDemoScreen(
     onAccentEnabledChange: (Boolean) -> Unit,
     onAccentColorChange: (Color) -> Unit,
     onShadowEnabledChange: (Boolean) -> Unit,
+    onOpenTabShowcase: () -> Unit = {},
 ) {
+    val showCenterAction = LocalConfiguration.current.orientation != Configuration.ORIENTATION_PORTRAIT
     val glassTheme = uiState.glassTheme
     var selectedIndex by remember { mutableIntStateOf(0) }
     var buttonClicked by remember { mutableStateOf(false) }
@@ -122,27 +130,28 @@ fun DynamicLightTabBarDemoScreen(
     var showDialog by remember { mutableStateOf(false) }
     var showPopup by remember { mutableStateOf(false) }
     var centerActionClicked by remember { mutableStateOf(false) }
+    var centerActionSelected by remember { mutableStateOf(false) }
     // Lens 折射效果開關：純玻璃鏡面（預設） vs 內容採樣折射（可選）
     var refractionEnabled by remember { mutableStateOf(DynamicLightTabBarConfig.LENS_REFRACTION_ENABLED_DEFAULT) }
     // 樣式切換：原始（Legacy，改動前） vs 新版（Liquid Glass 參考效果）
     var useLegacyStyle by remember { mutableStateOf(false) }
     val tabs = listOf(
-        DynamicLightTabItem(
+        GlassLensTabItem(
             key = "tab0",
             label = stringResource(R.string.tab_0),
             icon = Icons.Default.Home,
         ),
-        DynamicLightTabItem(
+        GlassLensTabItem(
             key = "tab1",
             label = stringResource(R.string.tab_1),
             icon = Icons.Default.Search,
         ),
-        DynamicLightTabItem(
+        GlassLensTabItem(
             key = "tab2",
             label = stringResource(R.string.tab_2),
             icon = Icons.Default.Favorite,
         ),
-        DynamicLightTabItem(
+        GlassLensTabItem(
             key = "tab3",
             label = stringResource(R.string.tab_3),
             icon = Icons.Default.Settings,
@@ -175,25 +184,30 @@ fun DynamicLightTabBarDemoScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("原始樣式")
+                Text(stringResource(R.string.tab_style_legacy))
                 GlassSwitch(
                     checked = useLegacyStyle,
                     onCheckedChange = { useLegacyStyle = it },
                     config = glassTheme
                 )
-                Text("Lens 折射")
-                GlassSwitch(
-                    checked = refractionEnabled,
-                    onCheckedChange = { refractionEnabled = it },
-                    config = glassTheme
-                )
+                if (!useLegacyStyle && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Text(stringResource(R.string.tab_lens_refraction))
+                    GlassSwitch(
+                        checked = refractionEnabled,
+                        onCheckedChange = { refractionEnabled = it },
+                        config = glassTheme
+                    )
+                }
             }
             // 底部 Tab Bar：浮在內容之上，內容從它的毛玻璃底下捲過去
             if (useLegacyStyle) {
                 DynamicLightTabBarLegacy(
                     items = tabs.map { it.label },
                     selectedIndex = selectedIndex,
-                    onSelect = { selectedIndex = it },
+                    onSelect = {
+                        selectedIndex = it
+                        centerActionSelected = false
+                    },
                     pillGlassConfig = glassTheme,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -206,14 +220,33 @@ fun DynamicLightTabBarDemoScreen(
                         .padding(horizontal = 16.dp, vertical = TAB_BAR_VERTICAL_PADDING)
                 )
             } else {
-                DynamicLightTabBar(
+                GlassLensTabBar(
                     items = tabs,
                     selectedIndex = selectedIndex,
-                    onSelect = { selectedIndex = it },
-                    pillGlassConfig = glassTheme,
-                    lensRefractionEnabled = refractionEnabled,
+                    onSelect = {
+                        selectedIndex = it
+                        centerActionSelected = false
+                    },
+                    centerAction = if (showCenterAction) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    } else null,
+                    centerActionSelected = centerActionSelected,
+                    onCenterActionClick = {
+                        centerActionSelected = true
+                        centerActionClicked = true
+                    },
+                    centerActionDescription = stringResource(R.string.center_action_desc),
+                    contentColor = glassTheme.contentColor,
+                    lensEnabled = refractionEnabled,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .fillMaxWidth(DynamicLightTabBarConfig.BAR_WIDTH_FRACTION)
                         // 與內容區一致用 safeDrawing，橫放時側邊的導覽列與挖孔也一併避開
                         .windowInsetsPadding(
                             WindowInsets.safeDrawing.only(
@@ -314,6 +347,11 @@ fun DynamicLightTabBarDemoScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 // 玻璃主題設置
+                GlassButton(
+                    text = stringResource(R.string.tab_showcase_open),
+                    onClick = onOpenTabShowcase,
+                    config = glassTheme,
+                )
                 Text(
                     text = stringResource(R.string.glass_theme_title),
                     color = glassTheme.contentColor,

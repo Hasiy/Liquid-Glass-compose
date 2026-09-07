@@ -1,4 +1,4 @@
-package top.hasiyliquidglassdemo.ui.legacy
+package top.hasiy.designsystem.legacy
 
 import androidx.compose.animation.core.Spring
 

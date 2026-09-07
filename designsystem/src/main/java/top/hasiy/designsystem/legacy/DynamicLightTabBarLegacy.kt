@@ -1,4 +1,4 @@
-package top.hasiyliquidglassdemo.ui.legacy
+package top.hasiy.designsystem.legacy
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
@@ -64,8 +64,8 @@ import top.hasiy.designsystem.GlassConfig
 import top.hasiy.designsystem.glassBackdrop
 import top.hasiy.designsystem.isLightSurface
 
-/** 淺色主題下 Bar 底相對表面色的壓暗比例：只需要一點層次，壓多了就變回深色條 */
-private const val LIGHT_BAR_DARKEN = 0.10f
+/** 淺色主題下 Bar 底相對表面色的壓暗比例：僅保留邊界層次，不把白色控件染成灰條。 */
+private const val LIGHT_BAR_DARKEN = 0.02f
 
 internal fun tabIndexAtPosition(
     touchX: Float,
@@ -108,6 +108,10 @@ internal fun indicatorTargetOffsetPx(
  * @param onSelect 選中回呼，拖動結束或點擊時觸發
  * @param showWaterHighlight 是否顯示水滴頂部高光光暈（含感應器跟隨），預設由 Config 控制
  * @param pillGlassConfig 選中 Pill 的玻璃主題（null 時使用 [DynamicLightTabBarConfig] 的預設水滴效果）
+ * @param showBarBackground 是否繪製整條 Tab 軌道；false 時只保留半透明選中 Pill
+ * @param showBarBorder 是否繪製整條 Tab 軌道邊緣；預設與 [showBarBackground] 相同
+ * @param barBackgroundColor 軌道基色覆寫；用於淺色主題將灰色容器與白色選中 Pill 分離
+ * @param barBackgroundAlpha 軌道基色透明度；只在 [showBarBackground] 為 true 時生效
  * @param modifier 外部修飾符
  */
 @Composable
@@ -117,6 +121,10 @@ fun DynamicLightTabBarLegacy(
     onSelect: (Int) -> Unit,
     showWaterHighlight: Boolean = DynamicLightTabBarLegacyConfig.WATER_DROP_ENABLED,
     pillGlassConfig: GlassConfig? = null,
+    showBarBackground: Boolean = true,
+    showBarBorder: Boolean = showBarBackground,
+    barBackgroundColor: Color? = null,
+    barBackgroundAlpha: Float = DynamicLightTabBarLegacyConfig.BACKGROUND_ALPHA,
     modifier: Modifier = Modifier
 ) {
     // 主題派生色：這個 Bar 原本整套是為深色背景寫死的（白反光、白描邊、白字）。
@@ -128,10 +136,13 @@ fun DynamicLightTabBarLegacy(
     val glassBorderInk = pillGlassConfig?.borderColor ?: Color.White
     val tabTextColor = pillGlassConfig?.contentColor ?: Color.White
     // 淺色主題的 Bar 底：從表面色壓深一階，取代寫死的深色 BACKGROUND_COLOR_HEX
-    val barBackgroundColor = if (isLight && pillGlassConfig != null) {
+    val resolvedBarBackgroundColor = barBackgroundColor ?: if (isLight) {
         lerp(pillGlassConfig.baseColor, Color.Black, LIGHT_BAR_DARKEN)
     } else {
         Color(DynamicLightTabBarLegacyConfig.BACKGROUND_COLOR_HEX)
+    }
+    val outerShadowColor = if (isLight) Color.Black else {
+        Color(DynamicLightTabBarLegacyConfig.OUTER_SHADOW_AMBIENT_HEX)
     }
 
     val haptic = LocalHapticFeedback.current
@@ -208,6 +219,7 @@ fun DynamicLightTabBarLegacy(
         } else null
     }
     val barRenderEffect = if (
+        showBarBackground &&
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         barShader != null &&
         isDragging &&
@@ -229,6 +241,53 @@ fun DynamicLightTabBarLegacy(
         RenderEffect.createRuntimeShaderEffect(barShader, "content")
     } else null
 
+    val barShape = RoundedCornerShape(DynamicLightTabBarLegacyConfig.BAR_CORNER_RADIUS_DP.dp)
+    val trackModifier = Modifier
+        .then(
+            if (showBarBackground) {
+                Modifier
+                    // 背景模糊：讓底下的頁面內容隱約透出來，而不是清晰穿透。
+                    // 需要頁面根節點包一層 GlassBackdropHost，且這個 Bar 要放在它的 overlay 裡。
+                    .then(
+                        if (pillGlassConfig != null) {
+                            Modifier.glassBackdrop(shape = barShape, config = pillGlassConfig)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .background(
+                        color = resolvedBarBackgroundColor.copy(alpha = barBackgroundAlpha),
+                        shape = barShape,
+                    )
+                    .shadow(
+                        elevation = DynamicLightTabBarLegacyConfig.OUTER_SHADOW_ELEVATION_DP.dp,
+                        shape = barShape,
+                        ambientColor = outerShadowColor
+                            .copy(alpha = DynamicLightTabBarLegacyConfig.OUTER_SHADOW_AMBIENT_ALPHA),
+                        spotColor = outerShadowColor
+                            .copy(alpha = DynamicLightTabBarLegacyConfig.OUTER_SHADOW_SPOT_ALPHA),
+                    )
+            } else {
+                Modifier
+            }
+        )
+        .then(
+            if (showBarBorder && DynamicLightTabBarLegacyConfig.GLASS_BORDER_ENABLED) {
+                Modifier.border(
+                    width = DynamicLightTabBarLegacyConfig.GLASS_BORDER_WIDTH_DP.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            glassBorderInk.copy(alpha = DynamicLightTabBarLegacyConfig.GLASS_BORDER_TOP_ALPHA),
+                            glassBorderInk.copy(alpha = DynamicLightTabBarLegacyConfig.GLASS_BORDER_BOTTOM_ALPHA),
+                        )
+                    ),
+                    shape = barShape,
+                )
+            } else {
+                Modifier
+            }
+        )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -242,48 +301,7 @@ fun DynamicLightTabBarLegacy(
                     renderEffect = barRenderEffect.asComposeRenderEffect()
                 }
             }
-            // 背景模糊：讓底下的頁面內容隱約透出來，而不是清晰穿透。
-            // 需要頁面根節點包一層 GlassBackdropHost，且這個 Bar 要放在它的 overlay 裡。
-            .then(
-                if (pillGlassConfig != null) {
-                    Modifier.glassBackdrop(
-                        shape = RoundedCornerShape(
-                            DynamicLightTabBarLegacyConfig.BAR_CORNER_RADIUS_DP.dp
-                        ),
-                        config = pillGlassConfig
-                    )
-                } else {
-                    Modifier
-                }
-            )
-            .background(
-                color = barBackgroundColor
-                    .copy(alpha = DynamicLightTabBarLegacyConfig.BACKGROUND_ALPHA),
-                shape = RoundedCornerShape(DynamicLightTabBarLegacyConfig.BAR_CORNER_RADIUS_DP.dp)
-            )
-            .shadow(
-                elevation = DynamicLightTabBarLegacyConfig.OUTER_SHADOW_ELEVATION_DP.dp,
-                shape = RoundedCornerShape(DynamicLightTabBarLegacyConfig.BAR_CORNER_RADIUS_DP.dp),
-                ambientColor = Color(DynamicLightTabBarLegacyConfig.OUTER_SHADOW_AMBIENT_HEX)
-                    .copy(alpha = DynamicLightTabBarLegacyConfig.OUTER_SHADOW_AMBIENT_ALPHA),
-                spotColor = Color(DynamicLightTabBarLegacyConfig.OUTER_SHADOW_SPOT_HEX)
-                    .copy(alpha = DynamicLightTabBarLegacyConfig.OUTER_SHADOW_SPOT_ALPHA)
-            )
-            // 玻璃邊緣描邊：頂部最亮、往底部漸淡，模擬玻璃上緣反光的邊框
-            .then(
-                if (DynamicLightTabBarLegacyConfig.GLASS_BORDER_ENABLED) {
-                    Modifier.border(
-                        width = DynamicLightTabBarLegacyConfig.GLASS_BORDER_WIDTH_DP.dp,
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                glassBorderInk.copy(alpha = DynamicLightTabBarLegacyConfig.GLASS_BORDER_TOP_ALPHA),
-                                glassBorderInk.copy(alpha = DynamicLightTabBarLegacyConfig.GLASS_BORDER_BOTTOM_ALPHA)
-                            )
-                        ),
-                        shape = RoundedCornerShape(DynamicLightTabBarLegacyConfig.BAR_CORNER_RADIUS_DP.dp)
-                    )
-                } else Modifier
-            )
+            .then(trackModifier)
             // 僅觀察按下狀態、不消費事件：靜態亮斑在觸摸期間隱藏，
             // 原有的點擊與拖動手勢仍由後續 Modifier 正常處理。
             .pointerInput(Unit) {
@@ -344,7 +362,7 @@ fun DynamicLightTabBarLegacy(
         val itemWidthDp = with(density) { itemWidthPx.toDp() }
 
         // 玻璃反光層：頂部白色高光漸層，模擬磨砂玻璃的反光質感（覆於整個 Bar）
-        if (DynamicLightTabBarLegacyConfig.GLASS_REFLECTION_ENABLED) {
+        if (showBarBackground && DynamicLightTabBarLegacyConfig.GLASS_REFLECTION_ENABLED) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -362,7 +380,7 @@ fun DynamicLightTabBarLegacy(
         }
 
         // API < 33 的後備：整個 Bar 的光暈
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && !touchX.isNaN()) {
+        if (showBarBackground && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && !touchX.isNaN()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

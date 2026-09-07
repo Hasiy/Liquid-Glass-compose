@@ -11,6 +11,18 @@
     <!-- 中央主操作按钮 -->
     <string name="center_action_desc">新建</string>
     <string name="center_action_clicked">已点击中央按钮</string>
+    <string name="tab_style_legacy">原始樣式</string>
+    <string name="tab_lens_refraction">Lens 折射</string>
+    <string name="tab_component_legacy_name">原始组件 · DynamicLightTabBarLegacy</string>
+    <string name="tab_component_lens_name">新样式 · GlassLensTabBar</string>
+    <string name="tab_legacy_original_variant">原始深色</string>
+    <string name="tab_legacy_android_variant">Android 浅色</string>
+    <string name="tab_showcase_title">Tab / Lens</string>
+    <string name="tab_showcase_subtitle">同屏对照原始组件与透明可移动镜片组件</string>
+    <string name="tab_showcase_back_desc">返回组件目录</string>
+    <string name="tab_showcase_open">打开 Tab 专页</string>
+    <string name="tab_showcase_block_one">内容采样 A</string>
+    <string name="tab_showcase_block_two">内容采样 B</string>
 
     <!-- Demo 画面 -->
     <string name="demo_selected_label">当前选中的分页：%1$s</string>

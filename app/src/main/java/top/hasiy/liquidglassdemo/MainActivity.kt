@@ -19,6 +19,7 @@ import top.hasiy.designsystem.GlassPresets
 import top.hasiy.designsystem.isLightSurface
 import top.hasiyliquidglassdemo.ui.DemoThemeUiState
 import top.hasiyliquidglassdemo.ui.DynamicLightTabBarDemoScreen
+import top.hasiyliquidglassdemo.ui.DynamicLightTabBarShowcaseScreen
 import top.hasiyliquidglassdemo.ui.theme.LiquidGlassDemoTheme
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
             var shadowEnabled by remember(presetIndex) {
                 mutableStateOf(presets[presetIndex].shadowEnabled)
             }
+            var showTabShowcase by rememberSaveable { mutableStateOf(true) }
 
             val uiState = DemoThemeUiState(
                 presets = presets,
@@ -59,7 +61,7 @@ class MainActivity : ComponentActivity() {
             )
 
             // 系統列圖示的明暗要跟著主題走：深色主題配深色圖示會看不清
-            val lightSurface = uiState.glassTheme.isLightSurface
+            val lightSurface = showTabShowcase || uiState.glassTheme.isLightSurface
             val view = LocalView.current
             SideEffect {
                 val window = (view.context as Activity).window
@@ -70,13 +72,20 @@ class MainActivity : ComponentActivity() {
             }
 
             LiquidGlassDemoTheme(lightSurface = lightSurface) {
-                DynamicLightTabBarDemoScreen(
-                    uiState = uiState,
-                    onPresetChange = { presetIndex = it },
-                    onAccentEnabledChange = { accentEnabled = it },
-                    onAccentColorChange = { accentColor = it },
-                    onShadowEnabledChange = { shadowEnabled = it },
-                )
+                if (showTabShowcase) {
+                    DynamicLightTabBarShowcaseScreen(
+                        onBack = { showTabShowcase = false },
+                    )
+                } else {
+                    DynamicLightTabBarDemoScreen(
+                        uiState = uiState,
+                        onPresetChange = { presetIndex = it },
+                        onAccentEnabledChange = { accentEnabled = it },
+                        onAccentColorChange = { accentColor = it },
+                        onShadowEnabledChange = { shadowEnabled = it },
+                        onOpenTabShowcase = { showTabShowcase = true },
+                    )
+                }
             }
         }
     }

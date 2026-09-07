@@ -111,22 +111,25 @@ class DynamicLightTabBarLogicTest {
     // ---------- Lens 幾何與限位 ----------
 
     @Test
-    fun `lens centers on selected slot`() {
+    fun `lens stays centered on selected slot at bar edges`() {
         // 槽位寬 100，factor 1.45 → lens 寬 145
-        // 選中第 0 槽：offset=0，中心=50，lensLeft = 50 - 72.5 = -22.5（向左伸出，中心對齊選中項）
+        // 選中第 0 槽：允許向左突出，確保 Lens 中心仍在槽位中心。
         assertEquals(-22.5f, lensLeftOffsetPx(0f, 100f, 500f, 1.45f), 0f)
         // 選中第 1 槽：offset=100，中心=150，lensLeft = 150 - 72.5 = 77.5
         assertEquals(77.5f, lensLeftOffsetPx(100f, 100f, 500f, 1.45f), 0f)
-    }
-
-    @Test
-    fun `lens centers on selected slot even at bar edges`() {
-        val barWidth = 500f
-        val itemWidth = 100f
-        // 尾槽：offset=400，中心=450，lensLeft=450-72.5=377.5（向右伸出，中心仍對齊）
-        assertEquals(377.5f, lensLeftOffsetPx(400f, itemWidth, barWidth, 1.45f), 0f)
-        // 越界拖動（左側）：中心隨之左移，Lens 左緣為負（伸出 Bar 左界，中心對齊）
-        assertEquals(-222.5f, lensLeftOffsetPx(-200f, itemWidth, barWidth, 1.45f), 0f)
+        // 尾槽：允許向右突出，確保 Lens 中心仍在槽位中心。
+        assertEquals(
+            377.5f,
+            lensLeftOffsetPx(
+                400f,
+                itemWidthPx = 100f,
+                barWidthPx = 500f,
+                lensWidthFactor = 1.45f,
+            ),
+            0f,
+        )
+        // 拖動位置本身由 indicatorTargetOffsetPx 限制；此函式只負責中心對齊。
+        assertEquals(-222.5f, lensLeftOffsetPx(-200f, 100f, 500f, 1.45f), 0f)
     }
 
     @Test

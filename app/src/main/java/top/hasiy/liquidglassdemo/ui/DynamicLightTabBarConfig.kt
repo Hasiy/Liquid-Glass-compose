@@ -1,6 +1,7 @@
 package top.hasiyliquidglassdemo.ui
 
 import androidx.compose.animation.core.Spring
+import androidx.compose.ui.graphics.Color
 
 /**
  * DynamicLightTabBar 的可調參數設定。
@@ -13,6 +14,12 @@ object DynamicLightTabBarConfig {
     // ---------- 尺寸 ----------
     /** Tab Bar 高度 */
     const val BAR_HEIGHT_DP = 72
+
+    /** Demo 中 Tab Bar 相對可用螢幕寬度的比例 */
+    const val BAR_WIDTH_FRACTION = 0.95f
+
+    /** 是否繪製整條 Tab Bar 的半透明背景；關閉後只保留內容與邊緣效果 */
+    const val BAR_BACKGROUND_ENABLED = false
 
     /** 背景圓角 */
     const val BAR_CORNER_RADIUS_DP = 36
@@ -38,13 +45,34 @@ object DynamicLightTabBarConfig {
     const val LENS_REFRACTION_ENABLED_DEFAULT = false
 
     /** 折射模式：內容放大倍率（>1 產生凸透鏡放大感） */
-    const val LENS_MAGNIFICATION = 1.06f
+    const val LENS_MAGNIFICATION = 1.10f
 
     /** 折射模式：邊緣 RGB 分通道偏移量（px），產生色散 */
     const val LENS_CHROMATIC_PX = 1.5f
 
     /** 折射模式：內容放大後的輕微徑向扭曲強度（0~1） */
-    const val LENS_DISTORTION = 0.02f
+    const val LENS_DISTORTION = 0.05f
+
+    /** 折射 Lens 內的透明 tint 強度，避免鏡片變成實心膠囊 */
+    const val LENS_REFRACTION_TINT_ALPHA = 0.10f
+
+    /** 折射 Lens 邊緣的單層彩色描邊透明度 */
+    const val LENS_REFRACTION_BORDER_ALPHA = 0.58f
+
+    /** 折射 Lens 自身的輕量陰影高度，跟著鏡片位置移動 */
+    const val LENS_REFRACTION_SHADOW_ELEVATION_DP = 4
+
+    /** 折射 Lens 自身的陰影透明度 */
+    const val LENS_REFRACTION_SHADOW_ALPHA = 0.12f
+
+    /** 折射 Lens 邊緣的彩色光譜，沿水平方向形成單一玻璃輪廓 */
+    val LENS_REFRACTION_BORDER_COLORS = listOf(
+        Color(0xFF63D8FF),
+        Color(0xFFFFFFFF),
+        Color(0xFFFFD277),
+        Color(0xFFB38BFF),
+        Color(0xFF63D8FF),
+    )
 
     /** 膠囊邊緣 Fresnel 高光強度（0~1）：強調 Lens 輪廓 */
     const val LENS_FRESNEL_STRENGTH = 0.18f
@@ -217,5 +245,5 @@ object DynamicLightTabBarConfig {
 
     // ---------- 未選中文字樣式 ----------
     /** 未選中文字透明度 */
-    const val TAB_TEXT_UNSELECTED_ALPHA = 0.55f
+    const val TAB_TEXT_UNSELECTED_ALPHA = 0.68f
 }
