@@ -110,6 +110,8 @@ private const val GLOW_ALPHA_SCALE_LIGHT = 0.25f
  * @param onAccentEnabledChange 強調色開關回呼
  * @param onAccentColorChange 強調色選擇回呼
  * @param onShadowEnabledChange 陰影開關回呼
+ * @param onOpenTabShowcase 前往 Tab / Lens 同屏對照頁
+ * @param onOpenPalettePreview 前往主題色驗收頁
  */
 @Composable
 fun DynamicLightTabBarDemoScreen(
@@ -119,6 +121,7 @@ fun DynamicLightTabBarDemoScreen(
     onAccentColorChange: (Color) -> Unit,
     onShadowEnabledChange: (Boolean) -> Unit,
     onOpenTabShowcase: () -> Unit = {},
+    onOpenPalettePreview: () -> Unit = {},
 ) {
     val showCenterAction = LocalConfiguration.current.orientation != Configuration.ORIENTATION_PORTRAIT
     val glassTheme = uiState.glassTheme
@@ -350,6 +353,11 @@ fun DynamicLightTabBarDemoScreen(
                 GlassButton(
                     text = stringResource(R.string.tab_showcase_open),
                     onClick = onOpenTabShowcase,
+                    config = glassTheme,
+                )
+                GlassButton(
+                    text = stringResource(R.string.palette_preview_open),
+                    onClick = onOpenPalettePreview,
                     config = glassTheme,
                 )
                 Text(

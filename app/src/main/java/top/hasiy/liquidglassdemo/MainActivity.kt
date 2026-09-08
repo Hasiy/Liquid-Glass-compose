@@ -20,7 +20,21 @@ import top.hasiy.designsystem.isLightSurface
 import top.hasiyliquidglassdemo.ui.DemoThemeUiState
 import top.hasiyliquidglassdemo.ui.DynamicLightTabBarDemoScreen
 import top.hasiyliquidglassdemo.ui.DynamicLightTabBarShowcaseScreen
+import top.hasiyliquidglassdemo.ui.ThemePalettePreviewScreen
 import top.hasiyliquidglassdemo.ui.theme.LiquidGlassDemoTheme
+import top.hasiyliquidglassdemo.ui.theme.rememberThemePaletteState
+
+/** Demo 的頁面。導航只在這個 Activity 內部切換，不值得為三頁引入 Navigation。 */
+private enum class DemoScreen {
+    /** Tab / Lens 同屏對照頁。 */
+    TAB_SHOWCASE,
+
+    /** 主題色驗收頁。 */
+    PALETTE_PREVIEW,
+
+    /** SDK 元件目錄。 */
+    CATALOG,
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -49,7 +63,9 @@ class MainActivity : ComponentActivity() {
             var shadowEnabled by remember(presetIndex) {
                 mutableStateOf(presets[presetIndex].shadowEnabled)
             }
-            var showTabShowcase by rememberSaveable { mutableStateOf(true) }
+            var screen by rememberSaveable { mutableStateOf(DemoScreen.TAB_SHOWCASE) }
+            // 主題色與四組視覺預設是兩件事：這個記的是配色（8 組），presetIndex 記的是材質結構
+            var palette by rememberThemePaletteState()
 
             val uiState = DemoThemeUiState(
                 presets = presets,
@@ -60,8 +76,15 @@ class MainActivity : ComponentActivity() {
                 shadowEnabled = shadowEnabled,
             )
 
-            // 系統列圖示的明暗要跟著主題走：深色主題配深色圖示會看不清
-            val lightSurface = showTabShowcase || uiState.glassTheme.isLightSurface
+            // 系統列圖示的明暗要跟著當前頁的底色走：深色底配深色圖示會看不清。
+            // 每頁的底色來源不同——Tab 對照頁固定淺底，主題色頁露出的是**畫布**
+            // （不是屏內，所以用 isCanvasLight；Tactile 正是畫布淺、屏內深），
+            // 元件目錄跟著四組視覺預設。
+            val lightSurface = when (screen) {
+                DemoScreen.TAB_SHOWCASE -> true
+                DemoScreen.PALETTE_PREVIEW -> palette.isCanvasLight
+                DemoScreen.CATALOG -> uiState.glassTheme.isLightSurface
+            }
             val view = LocalView.current
             SideEffect {
                 val window = (view.context as Activity).window
@@ -72,18 +95,25 @@ class MainActivity : ComponentActivity() {
             }
 
             LiquidGlassDemoTheme(lightSurface = lightSurface) {
-                if (showTabShowcase) {
-                    DynamicLightTabBarShowcaseScreen(
-                        onBack = { showTabShowcase = false },
+                when (screen) {
+                    DemoScreen.TAB_SHOWCASE -> DynamicLightTabBarShowcaseScreen(
+                        onBack = { screen = DemoScreen.CATALOG },
                     )
-                } else {
-                    DynamicLightTabBarDemoScreen(
+
+                    DemoScreen.PALETTE_PREVIEW -> ThemePalettePreviewScreen(
+                        palette = palette,
+                        onPaletteChange = { palette = it },
+                        onBack = { screen = DemoScreen.CATALOG },
+                    )
+
+                    DemoScreen.CATALOG -> DynamicLightTabBarDemoScreen(
                         uiState = uiState,
                         onPresetChange = { presetIndex = it },
                         onAccentEnabledChange = { accentEnabled = it },
                         onAccentColorChange = { accentColor = it },
                         onShadowEnabledChange = { shadowEnabled = it },
-                        onOpenTabShowcase = { showTabShowcase = true },
+                        onOpenTabShowcase = { screen = DemoScreen.TAB_SHOWCASE },
+                        onOpenPalettePreview = { screen = DemoScreen.PALETTE_PREVIEW },
                     )
                 }
             }

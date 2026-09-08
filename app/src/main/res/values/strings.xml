@@ -78,4 +78,16 @@
     <string name="glass_popup_message">这是一个轻量级 PopupWindow 示例。</string>
     <string name="glass_popup_open">打开弹窗</string>
     <string name="glass_dialog_popup_title">对话框与弹窗</string>
+
+    <!-- 主题色验收页 -->
+    <string name="palette_preview_title">主题色</string>
+    <string name="palette_preview_subtitle">切换主题后所有语义色同步变化</string>
+    <string name="palette_preview_back_desc">返回组件目录</string>
+    <string name="palette_preview_open">打开主题色专页</string>
+    <string name="palette_preview_semantics">语义验收</string>
+    <string name="palette_preview_tokens">语义色 token</string>
+    <string name="palette_preview_connected">● 已连接 · FTMS Bike</string>
+    <string name="palette_preview_disconnected">● 已断开 · 正在重连</string>
+    <string name="palette_preview_cta">开始运动</string>
+    <string name="palette_preview_progress">进度填充压在轨道上</string>
 </resources>
