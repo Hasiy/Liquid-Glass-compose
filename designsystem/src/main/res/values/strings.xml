@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 玻璃主题名称 -->
+    <!-- 玻璃主题名称（视觉结构） -->
     <string name="glass_theme_drop">水滴</string>
     <string name="glass_theme_neutral">中性</string>
     <string name="glass_theme_dark">深色</string>
     <string name="glass_theme_native">原生</string>
+
+    <!-- 主题色名称（配色） -->
+    <string name="glass_palette_lime">荧光绿</string>
+    <string name="glass_palette_sky">品牌天蓝</string>
+    <string name="glass_palette_nordic">北欧雾绿</string>
+    <string name="glass_palette_ocean">冰川蓝</string>
+    <string name="glass_palette_ember">熔岩橙</string>
+    <string name="glass_palette_aurora">极光紫</string>
+    <string name="glass_palette_digital">数码白 Digital</string>
+    <string name="glass_palette_tactile">实体按键 Tactile</string>
 
     <!-- Dialog 默认按钮 -->
     <string name="glass_dialog_confirm">确认</string>

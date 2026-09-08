@@ -45,6 +45,9 @@ import androidx.compose.ui.unit.dp
  * @param contentColor 建議的文字/圖示顏色（供元件內容使用）
  * @param accentEnabled 是否啟用強調色。false 時選中態與填充段沿用「深色提亮／淺色壓暗」的玻璃質感
  * @param accentColor 強調色：選中態指示、進度/音量/滑桿的填充段；僅在 [accentEnabled] 為 true 時生效
+ * @param palette 這個主題的語意色（強調色的淺／深變體、軌道、危險態、面板層級等）。
+ *   元件不要直接讀這個欄位，改讀 `GlassPalette.kt` 裡的擴充屬性——未指定的 token
+ *   會在那裡統一回退到由本結構其他欄位推導的值
  * @param pageBackgroundTop 頁面背景漸層起點色（供使用端繪製頁面底色）
  * @param pageBackgroundBottom 頁面背景漸層終點色
  * @param followTouchHighlight 是否在觸摸（按下）時讓柔光跟隨手指位置移動；false 時固定於默認位置
@@ -83,6 +86,7 @@ data class GlassConfig(
     val contentColor: Color = Color.White,
     val accentEnabled: Boolean = false,
     val accentColor: Color = Color(0xFF00A15C),
+    val palette: GlassPalette = GlassPalette.Unspecified,
     val pageBackgroundTop: Color = Color(0xFF2A1630),
     val pageBackgroundBottom: Color = Color(0xFF0B0D1A),
     val followTouchHighlight: Boolean = true,

@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
+import top.hasiy.designsystem.tokens.GlassVisualStyle
 
 /**
  * 玻璃主題預設變體。
@@ -137,6 +138,110 @@ object GlassPresets {
         hideHighlightOnTouch = false,
     )
 
+    /**
+     * 數碼白：淺色數字儀表。
+     *
+     * 這不是玻璃——參考稿的卡片是 `box-shadow: none` 的實色面、7px 低圓角、
+     * 沒有柔光也不跟手。層次全交給描邊與底色明度台階（屏底 #F4F5F2 → 卡片 #EBEEEA
+     * → dock #E4E8E4），所以柔光、指尖高光與外陰影一律關掉；留著會把平面儀表
+     * 讀成玻璃。
+     *
+     * 配色的權威來源是 [top.hasiy.designsystem.tokens.ThemePalette.Digital]，
+     * 這裡的顏色只是給非 Composable 情境用的回退值。
+     */
+    val Digital = GlassConfig(
+        baseColor = Color(0xFFEBEEEA),
+        bodyTopAlpha = 0.86f,
+        bodyBottomAlpha = 0.86f,
+
+        // 淺色表面：柔光方向必須是壓暗，但這個風格根本不畫柔光，只保留正確的
+        // 混合模式讓 GlassConfig.isLightSurface 判斷得出來
+        highlightColor = Color.Black,
+        highlightBlendMode = BlendMode.Multiply,
+        highlightInnerAlpha = 0f,
+        highlightOuterAlpha = 0f,
+        highlightCenterX = 0.50f,
+        highlightCenterY = 0.50f,
+        highlightRadiusFactor = 0.85f,
+        touchSpotPeakAlpha = 0f,
+
+        borderWidth = 1.dp,
+        borderColor = Color(0xFF0C110F),
+        borderTopAlpha = 0.13f,
+        borderBottomAlpha = 0.13f,
+
+        shadowEnabled = false,
+        shadowElevation = 0.dp,
+        shadowAmbientAlpha = 0f,
+        shadowSpotAlpha = 0f,
+        softShadowSpread = 0.dp,
+
+        contentColor = Color(0xFF111514),
+        accentEnabled = true,
+        accentColor = Color(0xFFFF3B30),
+        pageBackgroundTop = Color(0xFFF4F5F2),
+        pageBackgroundBottom = Color(0xFFF4F5F2),
+
+        followTouchHighlight = false,
+
+        // 表面幾乎不透明，浮層再模糊也看不出來，順帶省開銷
+        overlayBlurRadius = 8.dp,
+        overlayFallbackAlpha = 0.98f,
+    )
+
+    /**
+     * 實體按鍵：深色機械控件。
+     *
+     * 凸起胶帽的做法是「內緣左上白高光 + 內緣右下黑陰影 + 外投影」：
+     * [GlassConfig.highlightInnerAlpha] 給左上高光，[GlassConfig.innerShadowAlpha]
+     * 給內緣壓深，外投影把胶帽從底座上抬起來。
+     *
+     * 參考稿的卡片底是 `#3B3C3D → #292A2B → #1B1C1D` 的三段斜向漸層，而
+     * [GlassConfig] 的基底漸層只能同色不同透明度，所以這裡取中段色近似。
+     * 分段漸層與機械按壓位移屬於獨立 renderer 的範圍，不在配色層處理。
+     */
+    val Tactile = GlassConfig(
+        baseColor = Color(0xFF2A2B2C),
+        bodyTopAlpha = 1f,
+        bodyBottomAlpha = 1f,
+
+        highlightColor = Color.White,
+        highlightBlendMode = BlendMode.Screen,
+        highlightInnerAlpha = 0.11f,
+        highlightOuterAlpha = 0.02f,
+        highlightCenterX = 0.18f,
+        highlightCenterY = 0.10f,
+        highlightRadiusFactor = 0.60f,
+        touchSpotPeakAlpha = 0.05f,
+
+        // 胶帽之間靠近黑的切邊分隔，描邊上下同濃度才不會讀成單向打光
+        borderWidth = 1.dp,
+        borderColor = Color(0xFF080909),
+        borderTopAlpha = 0.74f,
+        borderBottomAlpha = 0.74f,
+
+        innerShadowAlpha = 0.58f,
+        innerShadowWidth = 7.dp,
+
+        shadowEnabled = true,
+        shadowElevation = 4.dp,
+        shadowAmbientAlpha = 0.52f,
+        shadowSpotAlpha = 0.42f,
+
+        contentColor = Color(0xFFF0F1EE),
+        accentEnabled = true,
+        accentColor = Color(0xFF10E66B),
+        pageBackgroundTop = Color(0xFF191A1B),
+        pageBackgroundBottom = Color(0xFF191A1B),
+
+        // 實體按鍵的按壓反饋是位移與壓深，不是跟手的光斑
+        followTouchHighlight = false,
+        hideHighlightOnTouch = false,
+
+        overlayBlurRadius = 10.dp,
+        overlayFallbackAlpha = 0.94f,
+    )
+
     /** 原生：Compose 原生 Material3 樣式（元件內部自動改用原生渲染） */
     val Native = GlassConfig(
         native = true,
@@ -159,8 +264,27 @@ object GlassPresets {
         hideHighlightOnTouch = false,
     )
 
-    /** 所有可選主題，供設定頁展示（靜態回退值，配色不隨 colors.xml 變動） */
+    /**
+     * SDK 自帶的四組視覺預設，供設定頁展示（靜態回退值，配色不隨 colors.xml 變動）。
+     *
+     * 這裡刻意不含 [Digital] 與 [Tactile]：那兩者是綁定配色的完整風格，
+     * 入口是 `ThemePalette` 的 8 組主題，不是「換個材質」的結構選項。
+     */
     val All: List<GlassConfig> = listOf(Drop, Neutral, Dark, Native)
+
+    /**
+     * 依視覺結構取對應的結構預設。
+     *
+     * 只回傳結構參數；顏色要由呼叫端用主題令牌覆蓋。
+     */
+    fun forVisualStyle(style: GlassVisualStyle): GlassConfig = when (style) {
+        GlassVisualStyle.DROP -> Drop
+        GlassVisualStyle.NEUTRAL -> Neutral
+        GlassVisualStyle.DARK -> Dark
+        GlassVisualStyle.NATIVE -> Native
+        GlassVisualStyle.DIGITAL -> Digital
+        GlassVisualStyle.TACTILE -> Tactile
+    }
 
     /**
      * 從 `colors.xml` 取色的水滴主題。

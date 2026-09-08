@@ -3,7 +3,12 @@
  */
 package top.hasiy.designsystem.tokens
 
-/** Liquid Glass 的视觉结构预设。 */
+/**
+ * Liquid Glass 的视觉结构预设。
+ *
+ * 这一层只描述材质结构（透明度、柔光、描边、陰影），配色由 [ThemePalette] 决定。
+ * 两者分离才能组合出「NEUTRAL 结构 + NORDIC 配色」这类搭配。
+ */
 enum class GlassVisualStyle {
     /** 深色水滴玻璃。 */
     DROP,
@@ -16,6 +21,12 @@ enum class GlassVisualStyle {
 
     /** 使用 Material3 原生控件。 */
     NATIVE,
+
+    /** 浅色数字仪表：低圆角、实色卡片、七段数码读数，不走玻璃质感。 */
+    DIGITAL,
+
+    /** 深色实体按键：内凹底座、凸起胶帽、机械按压反馈。 */
+    TACTILE,
 }
 
 /**
@@ -141,6 +152,72 @@ data class GlassThemeSpec(
                 accent = GREEN,
                 accentEnabled = false,
             )
+
+            // Digital / Tactile 没有「SDK 自带配色」的历史值，配色一律以对应
+            // ThemePalette 为唯一来源。
+            GlassVisualStyle.DIGITAL -> fromPalette(ThemePalette.Digital)
+
+            GlassVisualStyle.TACTILE -> fromPalette(ThemePalette.Tactile)
         }
+
+        /**
+         * 由一组主题色构造完整主题规格。
+         *
+         * 这是参考设计稿的 8 组配色进入 SDK 的入口：结构参数由
+         * [ThemePalette.visualStyle] 对应的预设提供，颜色全部取自 [palette]。
+         *
+         * 背景渐层两端取同一个 [ThemePalette.screen]：参考稿的屏底是纯色，
+         * 上面那层光晕是单独用强调色画的径向渐层，不是背景本身的明度渐变。
+         *
+         * @param palette 权威配色来源
+         */
+        fun fromPalette(palette: ThemePalette): GlassThemeSpec = GlassThemeSpec(
+            id = palette.id.id,
+            visualStyle = palette.visualStyle,
+            isLight = palette.isLight,
+            primary = palette.accent,
+            onPrimary = palette.onAccent,
+            secondary = palette.ambient,
+            backgroundTop = palette.screen,
+            backgroundBottom = palette.screen,
+            surface = palette.panel,
+            onSurface = palette.screenContent,
+            glassBase = palette.lift,
+            glassContent = palette.screenContent,
+            // 柔光方向由表面明暗决定：深色表面往白提亮，浅色表面往黑压暗。
+            glassHighlight = if (palette.isLight) BLACK else WHITE,
+            glassBorder = borderColorFor(palette.visualStyle, palette.isLight),
+            accent = palette.accent,
+            // 8 组主题都有明确的强调色语义，不再回退到玻璃提亮质感。
+            accentEnabled = true,
+        )
+
+        /**
+         * 结构性描边色。
+         *
+         * 前四组 Liquid Glass 结构的描边是通用玻璃边——深色表面往白、浅色表面往黑，
+         * 按明暗推就对了。DIGITAL 与 TACTILE 不行，它们有自己的切边色：
+         *
+         * TACTILE 是**深色**表面，但它的边是近黑的机械切边（胶帽之间的缝）。
+         * 按明暗推会得到白边，而渲染层的描边与内缘阴影共用同一个颜色
+         * （见 `GlassModifier` 的 `innerShadowAlpha` 与 `border` 两处），
+         * 于是每个胶帽会多一圈 74% 的白框加一层白色内发光，凸起感直接反掉。
+         */
+        private fun borderColorFor(style: GlassVisualStyle, isLight: Boolean): Long =
+            when (style) {
+                GlassVisualStyle.DIGITAL -> DIGITAL_EDGE
+                GlassVisualStyle.TACTILE -> TACTILE_EDGE
+                GlassVisualStyle.DROP,
+                GlassVisualStyle.NEUTRAL,
+                GlassVisualStyle.DARK,
+                GlassVisualStyle.NATIVE,
+                -> if (isLight) BLACK else WHITE
+            }
+
+        /** Digital 卡片的描边色，对应参考稿的 `rgba(12,17,15,.13)` */
+        private const val DIGITAL_EDGE = 0xFF0C110FL
+
+        /** Tactile 胶帽之间的近黑切边 */
+        private const val TACTILE_EDGE = 0xFF080909L
     }
 }
