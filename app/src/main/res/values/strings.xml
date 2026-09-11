@@ -90,4 +90,223 @@
     <string name="palette_preview_disconnected">● 已断开 · 正在重连</string>
     <string name="palette_preview_cta">开始运动</string>
     <string name="palette_preview_progress">进度填充压在轨道上</string>
+    <string name="palette_preview_selection">组件语义（选中态与轨道）</string>
+    <string name="palette_preview_chip_selected">已选中</string>
+    <string name="palette_preview_chip_unselected">未选中</string>
+
+    <!-- FTMS 指标名称 -->
+    <string name="metric_duration">运动时长</string>
+    <string name="metric_distance">距离</string>
+    <string name="metric_calories">热量</string>
+    <string name="metric_heart">心率</string>
+    <string name="metric_power">实时功率</string>
+    <string name="metric_cadence">踏频</string>
+    <string name="metric_slope">当前坡度</string>
+    <string name="metric_resistance">阻力</string>
+    <string name="metric_target_speed">目标速度</string>
+    <string name="metric_speed">当前速度</string>
+    <string name="metric_avg_speed">平均速度</string>
+    <string name="metric_avg_heart">平均心率</string>
+    <string name="metric_steps">步数</string>
+    <string name="metric_peak_heart">峰值心率</string>
+    <string name="metric_avg_power">平均功率</string>
+    <string name="metric_max_power">最大功率</string>
+    <string name="metric_pull">拉力</string>
+    <string name="metric_work">做功</string>
+    <string name="metric_lap_time">本圈用时</string>
+    <string name="metric_best_lap">最快单圈</string>
+    <!-- 划船机的桨次指标。这一批都带「本桨 / 上一桨」的双条对比 -->
+    <string name="metric_peak_pull">峰值拉力</string>
+    <string name="metric_avg_pull">平均拉力</string>
+    <string name="metric_drive_time">拉桨时间</string>
+    <string name="metric_recovery_time">收桨时间</string>
+    <string name="metric_stroke_power">每桨功率</string>
+    <string name="metric_drive_length">拉桨长度</string>
+    <string name="metric_stroke_distance">每桨里程</string>
+    <string name="metric_stroke_work">每桨做功</string>
+    <!-- 双条对比的无障碍描述：本桨 %1$s、上一桨 %2$s -->
+    <string name="metric_compare_desc">本桨 %1$s，上一桨 %2$s</string>
+    <string name="unit_newton">N</string>
+    <string name="unit_second">s</string>
+    <string name="unit_cm">cm</string>
+    <string name="unit_meter">m</string>
+    <string name="unit_joule">J</string>
+    <string name="unit_kj">kJ</string>
+    <!-- 没有数据时的占位。心率这种要外接传感器的指标，没配对上就显示这个 -->
+    <string name="metric_no_data">–</string>
+    <!-- 阻力不由 App 控制时（机械旋钮档）显示在数值位置 -->
+    <string name="metric_resistance_manual">手动</string>
+    <string name="scenario_no_sensor">无心率带</string>
+    <string name="scenario_manual_resistance">手动阻力</string>
+
+    <!-- 指标卡上的状态提示 -->
+    <string name="metric_step_hint">− ＋</string>
+    <string name="metric_read_only_device">设备只读</string>
+    <string name="metric_read_only_locked">不可调节</string>
+
+    <!-- 单位。km/h、bpm、W、rpm、%% 是国际符号不翻译，「级」才需要 -->
+    <string name="unit_km">km</string>
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_kcal">kcal</string>
+    <string name="unit_bpm">bpm</string>
+    <string name="unit_watt">W</string>
+    <string name="unit_rpm">rpm</string>
+    <string name="unit_percent">%</string>
+    <string name="unit_level">级</string>
+
+    <!-- 顶栏的连接状态 -->
+    <string name="workout_status_active">已连接</string>
+    <string name="workout_status_paused">已暂停</string>
+    <string name="workout_status_disconnected">已断开</string>
+    <string name="workout_status_reconnecting">正在重连</string>
+    <string name="workout_status_ended">已结束</string>
+    <string name="workout_recording">记录中</string>
+    <string name="workout_frozen">已冻结</string>
+
+    <!-- 指标组切换 -->
+    <string name="workout_more_metrics">更多指标</string>
+    <!-- %1$d = 组号，%2$d = 本组格数，%3$d = 两组合计 -->
+    <string name="workout_group_indicator">第 %1$d 组 · %2$d / %3$d</string>
+    <!-- 横屏只显示组号（参考稿 .l-more） -->
+    <string name="workout_group_indicator_short">%1$d / %2$d</string>
+
+    <!-- 状态矩阵页 -->
+    <string name="matrix_title">响应式状态矩阵</string>
+    <string name="matrix_back_desc">返回元件目录</string>
+    <string name="matrix_open">响应式状态矩阵</string>
+    <string name="matrix_scenario">场景</string>
+    <string name="matrix_to_landscape">切换到横屏</string>
+    <string name="matrix_to_portrait">切换到竖屏</string>
+    <string name="matrix_palette_menu_desc">选择主题色</string>
+    <string name="matrix_layout_menu_desc">调整版面</string>
+    <string name="matrix_layout_edit_start">拖动换位</string>
+    <string name="matrix_layout_edit_done">完成换位</string>
+    <!-- 側邊規格選單：分隔標題與兩個選項（單欄 / 雙欄） -->
+    <string name="matrix_side_menu_label">侧边</string>
+    <string name="matrix_side_columns">%1$d 栏</string>
+    <string name="matrix_align_start">左对齐</string>
+    <string name="matrix_slot_remove">移除这一格</string>
+    <!-- 双表仪表舱（平板专属显示模式） -->
+    <string name="cluster_title">双表仪表舱</string>
+    <string name="cluster_subtitle">%1$s · %2$s</string>
+    <string name="cluster_session">本次运动</string>
+    <!-- 「本次运动」旁的英文小标，纯装饰；不需要英文 eyebrow 的语言可以留空 -->
+    <string name="cluster_session_eyebrow">SESSION</string>
+    <!-- 无障碍：赛道图是纯绘制的资讯图表，读屏只能靠这一句拿到它传达的内容 -->
+    <string name="circuit_map_desc">赛道图，本圈进度 %1$d%%</string>
+    <!-- 无障碍：调节浮层背后那层遮罩，点它＝收起浮层 -->
+    <string name="matrix_adjust_scrim_desc">收起调节</string>
+    <!-- 顶栏那一句：时长 · 设备名 · 连线状态 -->
+    <string name="cluster_identity">%1$s · %2$s · </string>
+    <string name="cluster_plan_done">已完成 %1$s</string>
+    <string name="cluster_plan_total">计划 %1$s</string>
+    <string name="cluster_open">双表仪表舱（平板）</string>
+    <string name="route_open">路线与赛道地图（平板）</string>
+    <!-- 路线与赛道地图（平板专属显示模式） -->
+    <string name="route_title">路线与赛道地图</string>
+    <string name="route_kind">虚拟路线</string>
+    <string name="route_name">湖滨环线 · %1$s km</string>
+    <string name="route_done">已完成 %1$s km</string>
+    <string name="route_left">剩余 %1$s km</string>
+    <!-- 表下方的目标胶囊：达标时换字，不换位置 -->
+    <string name="target_chip_target">目标</string>
+    <string name="target_chip_hit">达标</string>
+    <!-- 底部目标调节条 -->
+    <string name="tune_target_speed">目标速度</string>
+    <string name="tune_target_resistance">目标阻力</string>
+    <!-- 赛道模式 -->
+    <string name="route_mode_route">虚拟路线</string>
+    <string name="route_mode_circuit">虚拟赛道</string>
+    <string name="route_mode_switch_desc">切换路线与赛道模式</string>
+    <string name="circuit_name">环道 A · %1$s km/圈</string>
+    <string name="circuit_lap">第 %1$d 圈 · 本圈 %2$d%%</string>
+    <string name="circuit_best_lap">最快单圈 %1$s</string>
+    <string name="circuit_lap_progress">本圈 %1$d%%</string>
+    <string name="circuit_lap_total">全程 %1$d 圈</string>
+    <string name="sector_fastest">最快 %1$s</string>
+    <string name="sector_average">平均 %1$s</string>
+    <string name="sector_legend_record">破历史最快</string>
+    <string name="sector_legend_best">本次最佳</string>
+    <string name="sector_legend_plain">未刷新</string>
+    <string name="sector_legend_now">当前段</string>
+    <string name="matrix_scenario_read_only">只读设备</string>
+    <string name="matrix_scenario_write">写入结果</string>
+    <string name="matrix_write_success">成功</string>
+    <string name="matrix_write_failed">失败</string>
+    <string name="matrix_write_rejected">拒绝</string>
+
+    <!-- 会话操作 -->
+    <string name="action_pause">暂停</string>
+    <string name="action_resume">继续</string>
+    <string name="action_hold_to_end">长按解锁</string>
+    <string name="action_slide_to_end">滑动结束</string>
+    <string name="action_slide_release">松手结束</string>
+    <!-- 无障碍：滑动结束的等效动作。手势（长按解锁再拖到底）对读屏/开关控制等于没有入口 -->
+    <string name="action_end_session_a11y">结束本次运动</string>
+
+    <!-- 调节浮层 -->
+    <string name="focus_max">MAX</string>
+    <string name="focus_min">MIN</string>
+    <string name="focus_step">STEP</string>
+    <string name="focus_thumb_current">当前</string>
+    <string name="focus_fine_tune_detail">每次 %1$s%2$s</string>
+    <string name="focus_step_down">调低</string>
+    <string name="focus_step_up">调高</string>
+    <!-- 无障碍：步进器的加减键要说清在调什么，光说「调高」读屏使用者不知道对象是谁 -->
+    <string name="focus_step_down_of">调低%1$s</string>
+    <string name="focus_step_up_of">调高%1$s</string>
+
+    <!-- 写入结果 Toast -->
+    <string name="toast_writing">正在设定%1$s %2$s…</string>
+    <string name="toast_failed">设定失败 · 连接已中断</string>
+    <string name="toast_failed_note">已回弹</string>
+    <string name="toast_rejected">设备已拒绝 · 已恢复 %1$s</string>
+    <string name="toast_rejected_note">保留原值</string>
+
+    <!-- 运行状态浮层 -->
+    <string name="overlay_paused_title">运动已暂停</string>
+    <string name="overlay_paused_note">计时与实时指标已冻结</string>
+    <!-- 暂停态铺满整屏：一句说明、冻结的时长、一句注解，底下是开始与滑动结束 -->
+    <string name="overlay_paused_lead">训练已暂停 · 数据保持最后值</string>
+    <string name="overlay_paused_resume">▶ 开始</string>
+    <string name="overlay_disconnected_title">已断开 · 正在重连</string>
+    <string name="overlay_reconnecting_title">正在重连</string>
+    <string name="overlay_offline_note">已保留最后数值</string>
+    <string name="overlay_ended_title">运动已结束</string>
+    <string name="overlay_ended_note">本次数据已记录</string>
+    <string name="overlay_restart">重新开始</string>
+
+    <!-- 指标编辑抽屉 -->
+    <string name="picker_mode_portrait">竖屏 · 底部抽屉</string>
+    <string name="picker_mode_landscape">横屏 · 侧边抽屉</string>
+    <string name="picker_title">请选择数据源</string>
+    <string name="picker_slot_current">%1$s · 当前为「%2$s」</string>
+    <string name="picker_category_realtime">实时</string>
+    <string name="picker_category_average">平均</string>
+    <string name="picker_category_aggregate">最大 / 总数值</string>
+    <string name="picker_used_badge">已在其他位置显示</string>
+    <string name="picker_reset">恢复默认布局</string>
+    <string name="picker_scrim_desc">关闭数据源选择</string>
+
+    <!-- 仪表附属 -->
+    <!-- %1$s = 对比窗口（由调用方传入），%2$s = 带正负号的变化量 -->
+    <string name="gauge_delta">↗ 比 %1$s前 %2$s</string>
+    <!-- 演示页给 WorkoutGauge 传的对比窗口；真实业务里由数据层决定 -->
+    <string name="gauge_delta_window_minute">1 分钟</string>
+    <string name="phase_relax">放松</string>
+    <string name="phase_sprint">冲刺</string>
+
+    <!-- 侧卡状态文案 -->
+    <string name="card_state_recording">自动记录中</string>
+    <string name="card_state_heart_zone">有氧区间</string>
+    <string name="card_state_slope_up">↗ 持续上坡</string>
+
+    <!-- 数据位名称，显示在编辑抽屉标题 -->
+    <!-- 资料位名称。格数随网格规格变（竖屏最多 9、dock 最多 15），
+         所以用带序号的模板而不是逐个写死；侧边四格是固定方位，保留具名。 -->
+    <string name="slot_portrait_at">竖屏第 %1$d 个数据位</string>
+    <string name="slot_land_dock_at">横屏底部第 %1$d 个数据位</string>
+    <string name="slot_land_side_at">横屏侧边第 %1$d 个数据位</string>
+    <string name="slot_bay_at">会话第 %1$d 个数据位</string>
+    <string name="slot_circuit_at">赛道第 %1$d 个数据位</string>
 </resources>
