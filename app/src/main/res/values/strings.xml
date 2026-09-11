@@ -137,6 +137,8 @@
     <!-- 阻力不由 App 控制时（机械旋钮档）显示在数值位置 -->
     <string name="metric_resistance_manual">手动</string>
     <string name="scenario_no_sensor">无心率带</string>
+    <!-- 场景：让「目标速度也能调」那一态可以反复验收——室内单车默认只支持阻力 -->
+    <string name="scenario_speed_control">速度可调</string>
     <string name="scenario_manual_resistance">手动阻力</string>
 
     <!-- 指标卡上的状态提示 -->
@@ -255,6 +257,9 @@
     <!-- 无障碍：步进器的加减键要说清在调什么，光说「调高」读屏使用者不知道对象是谁 -->
     <string name="focus_step_down_of">调低%1$s</string>
     <string name="focus_step_up_of">调高%1$s</string>
+    <!-- 横屏 dock 上内联步进键的无障碍标签：指标名 + 步进量 + 单位，例如「调低 目标速度 0.1 km/h」 -->
+    <string name="inline_adjust_down_by">调低 %1$s %2$s%3$s</string>
+    <string name="inline_adjust_up_by">调高 %1$s %2$s%3$s</string>
 
     <!-- 写入结果 Toast -->
     <string name="toast_writing">正在设定%1$s %2$s…</string>

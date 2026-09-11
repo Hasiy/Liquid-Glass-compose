@@ -113,6 +113,8 @@ fun MetricSlotCell(
     onDragStop: () -> Unit = {},
     onRemove: () -> Unit = {},
     fillCell: Boolean = false,
+    inlineAdjust: Boolean = false,
+    onStep: (String, Int) -> Unit = { _, _ -> },
 ) {
     val haptics = LocalHapticFeedback.current
     val metric = state.metricAt(slot.key)
@@ -311,6 +313,13 @@ fun MetricSlotCell(
     // 父約束的整個剩餘高度，把一張卡拉成通天長條（pad 兩頁就是這樣壞過一次）。
     // 現在 Row 有了 IntrinsicSize.Min，高度不再是「剩餘整頁」，撐高才是安全的。
     val fill = if (fillCell) Modifier.fillMaxSize() else Modifier.fillMaxHeight()
+    // 這一格要畫成內聯調節卡的話，順手把量程取出來——條件判斷與傳參各查一次表
+    // 就得多一個 !! 或一個假的預設值，兩個都不必要。
+    // 與 MetricGrid.inlineAdjustAt 同一組條件：有量程，而且這台裝置支援調它。
+    // 差一個條件就會出現「佔了兩欄卻沒有按鍵」的格子。
+    val inlineRange = metric
+        ?.takeIf { inlineAdjust && state.device.isControllable(it.id) }
+        ?.let { ControlRange.forMetric(it.id) }
     Box(modifier = cellModifier.then(cellHeight)) {
         if (metric == null) {
             EmptyMetricCard(
@@ -355,6 +364,10 @@ fun MetricSlotCell(
                 trend = state.groupIndex == SECOND_GROUP && MetricSlots.isDock(slot.key),
                 live = state.runtime.isLive,
                 flat = flat,
+                // 給了量程，卡片右邊那對「− ＋」就從提示變成真按鍵（見 MetricCard）。
+                // 只有橫屏 dock 傳——那裡的格子併兩欄之後放得下一組鍵。
+                stepRange = inlineRange,
+                onStep = { steps -> onStep(metric.id, steps) },
             )
         }
         if (markedForEdit) {

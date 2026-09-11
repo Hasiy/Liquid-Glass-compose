@@ -78,6 +78,7 @@ fun MetricGrid(
     config: GlassConfig = LocalGlassConfig.current,
     onAdjust: (String) -> Unit,
     onEdit: (String) -> Unit,
+    onStep: (String, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     columns: Int = 2,
     spacing: Dp = 8.dp,
@@ -90,6 +91,7 @@ fun MetricGrid(
     onRemove: (String) -> Unit = {},
     onDraggingChange: (Boolean) -> Unit = {},
     wideCells: Boolean = false,
+    inlineAdjust: Boolean = false,
     alignStart: Boolean = false,
 ) {
     // 尾部空著的列不佔位。
@@ -99,12 +101,28 @@ fun MetricGrid(
     //
     // 但也不能只留到最後一個有內容的格子——那一列剛好填滿時，後面的格子就再也
     // 夠不到了，3×5 這個設定等於白給。所以最後一列滿了就再放一列出來當「下一個位置」。
-    // 每格佔幾欄。對比卡佔兩欄，其餘一欄；欄數本來就只有 2 的時候佔滿一列。
+    // 這一格要不要畫成「不用點開就能調」的那種卡。
+    //
+    // 判斷用「這個指標**是不是控制項**」（量程存不存在），不是「現在能不能調」。
+    // 後者會讓版面跟著斷線與裝置只讀狀態重排——線一斷格子就跳位。只讀時位置
+    // 照佔，按鍵灰掉（見 InlineAdjustCard）。
+    val inlineAdjustAt: (MetricSlot) -> Boolean = { slot ->
+        inlineAdjust && state.metricAt(slot.key)?.let { metric ->
+            // 兩個條件都要：有量程（知道一格跳多少），而且**這台裝置支援調它**。
+            //
+            // 只看量程的話，目標速度在只能調阻力的室內單車上也會佔掉兩欄——
+            // 而按鍵是掛在 MetricCard 的 adjustable 分支裡的（問的是裝置），
+            // 那一格就白佔一欄的寬度卻什麼也沒多出來。兩邊的判斷必須是同一個。
+            state.device.isControllable(metric.id) && ControlRange.forMetric(metric.id) != null
+        } == true
+    }
+    // 每格佔幾欄。內聯調節卡與對比卡佔兩欄，其餘一欄；欄數本來就只有 2 的時候佔滿一列。
     val spanOf: (MetricSlot) -> Int = { slot ->
-        if (wideCells && state.metricAt(slot.key)?.comparison != null) {
-            WIDE_SPAN.coerceAtMost(columns)
-        } else {
-            1
+        when {
+            inlineAdjustAt(slot) -> WIDE_SPAN.coerceAtMost(columns)
+            wideCells && state.metricAt(slot.key)?.comparison != null ->
+                WIDE_SPAN.coerceAtMost(columns)
+            else -> 1
         }
     }
     // 左對齊：把有內容的格子提到前面。只動顯示順序，不落成版面覆蓋——
@@ -114,8 +132,15 @@ fun MetricGrid(
     } else {
         slots
     }
-    val allRows = packMetricRows(ordered, columns, spanOf)
-    val lastFilledKey = ordered.lastOrNull { state.metricAt(it.key) != null }?.key
+    // 規格「幾列 × 幾欄」給的是**欄位**總數，不是格子數。跨欄的格子吃掉兩個欄位，
+    // 能放的格子數就得跟著減——不減的話擠不下的格子會換到新的一列去，2×4 的 dock
+    // 會長成三列。橫屏只有 ~359dp 高，多一列就得捲，而「能捲到但看不全」跟
+    // 「看不到」對使用者是同一件事。
+    //
+    // 編輯版面時不截：那時要把所有資料位都攤開來給人拖，少一個就是少一個拖放目標。
+    val fitted = if (editingLayout) ordered else takeWithinBudget(ordered, slots.size, spanOf)
+    val allRows = packMetricRows(fitted, columns, spanOf)
+    val lastFilledKey = fitted.lastOrNull { state.metricAt(it.key) != null }?.key
     val rows = allRows.take(
         visibleRowCount(allRows, lastFilledKey, showEmpty = editingLayout)
     )
@@ -182,7 +207,11 @@ fun MetricGrid(
             // 掛在格子的修飾符上時，被拖起來的那一格會把自己的那兩條線一起帶走，
             // 於是拖動中會看到一條斜著跑的分隔線。線屬於這塊面板，不屬於格子。
             .then(
-                if (flat) Modifier.gridDividers(divider, columns, rows.size) else Modifier
+                if (flat) {
+                    Modifier.gridDividers(divider, columns, rows.map { row -> row.map(spanOf) })
+                } else {
+                    Modifier
+                }
             ),
         verticalArrangement = Arrangement.spacedBy(gap),
     ) {
@@ -272,6 +301,8 @@ fun MetricGrid(
                         onRemove = { onRemove(slot.key) },
                         // 高度是外面給的（同一排要等高）才讓卡片撐滿——見 MetricSlotCell.fillCell
                         fillCell = cellHeight != null,
+                        inlineAdjust = inlineAdjustAt(slot),
+                        onStep = onStep,
                     )
                 }
                 // 最後一列不滿時補空位，否則剩下的格子會被拉寬，與上面幾列對不齊。
@@ -301,6 +332,38 @@ internal fun compactSlots(
     slots: List<MetricSlot>,
     filled: (MetricSlot) -> Boolean,
 ): List<MetricSlot> = slots.filter(filled) + slots.filterNot(filled)
+
+/**
+ * 按**欄位預算**截斷資料位。
+ *
+ * 規格是「幾列 × 幾欄」，乘起來是總欄位數；[slots] 的長度剛好就是這個數。
+ * 一格佔一欄時兩者相等，有跨欄的格子時就不等了——那時要按欄位算，多出來的
+ * 格子放不進規格給的列數裡。
+ *
+ * 放不下的就丟掉，不去後面找一個佔一欄的補：補進來會讓顯示順序和資料位順序
+ * 不一致，使用者拖動換位時就對不上了（同 [packMetricRows] 的理由）。
+ *
+ * @param slots 資料位，順序即顯示順序
+ * @param budget 欄位總數
+ * @param spanOf 每格佔幾欄
+ */
+internal fun takeWithinBudget(
+    slots: List<MetricSlot>,
+    budget: Int,
+    spanOf: (MetricSlot) -> Int,
+): List<MetricSlot> {
+    if (budget <= 0) return emptyList()
+    val kept = mutableListOf<MetricSlot>()
+    var used = 0
+    slots.forEach { slot ->
+        val span = spanOf(slot).coerceAtLeast(1)
+        if (used + span <= budget) {
+            kept += slot
+            used += span
+        }
+    }
+    return kept
+}
 
 /**
  * 把資料位按欄數打包成列，允許某些格子佔多欄。
@@ -418,22 +481,37 @@ private fun Modifier.dropTarget(color: Color, corner: Dp): Modifier = drawWithCo
  * 畫在內容**之下**：flat 排法的格子本身是透明的（底由外層面板給），線在下面透得出來，
  * 而且不會蓋在拖起來浮在上面的那張卡上。
  *
- * 位置按等分算——flat 模式的格子由 `weight(1f)` 平分寬度、內容結構相同所以等高，
- * 均分出來的線就落在縫上。
+ * 豎線**按每一列自己的格子邊界**畫，不是整塊等分。有跨欄的格子（內聯調節卡、
+ * 對比卡）之後，那一列的縫就不在等分位置上了——照等分畫會有一條線直接穿過
+ * 跨欄卡的中間，看起來像那張卡裂成兩半。所以豎線也只畫在自己那一列的高度內，
+ * 不再貫穿整塊面板。
+ *
+ * 橫線仍是等分：每一列的高度由 `cellHeight` 統一給定（見 dock 的呼叫處）。
  *
  * @param color 線色
  * @param columns 欄數
- * @param rows 列數
+ * @param rowSpans 每一列裡各格佔幾欄，順序與畫出來的格子一致
  */
-private fun Modifier.gridDividers(color: Color, columns: Int, rows: Int): Modifier = drawBehind {
+private fun Modifier.gridDividers(
+    color: Color,
+    columns: Int,
+    rowSpans: List<List<Int>>,
+): Modifier = drawBehind {
+    if (columns <= 0 || rowSpans.isEmpty()) return@drawBehind
     val width = 1.dp.toPx()
     val columnStep = size.width / columns
-    val rowStep = size.height / rows
-    for (column in 1 until columns) {
-        val x = columnStep * column
-        drawLine(color, Offset(x, 0f), Offset(x, size.height), width)
+    val rowStep = size.height / rowSpans.size
+    rowSpans.forEachIndexed { rowIndex, spans ->
+        val top = rowStep * rowIndex
+        val bottom = top + rowStep
+        // 最後一格的右邊就是面板邊界，不用畫
+        var used = 0
+        spans.dropLast(1).forEach { span ->
+            used += span
+            drawLine(color, Offset(columnStep * used, top), Offset(columnStep * used, bottom), width)
+        }
     }
-    for (row in 1 until rows) {
+    for (row in 1 until rowSpans.size) {
         val y = rowStep * row
         drawLine(color, Offset(0f, y), Offset(size.width, y), width)
     }

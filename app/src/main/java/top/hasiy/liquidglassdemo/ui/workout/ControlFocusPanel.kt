@@ -306,12 +306,12 @@ private fun VerticalValueSlider(
     val shape = RoundedCornerShape(SLIDER_CORNER)
     val tube = tubeStyleFor(config.visualStyle)
 
-    Box(
+    ValueTube(
+        fraction = clamped,
+        orientation = TubeOrientation.VERTICAL,
+        config = config,
         modifier = Modifier
             .size(width = SLIDER_WIDTH, height = SLIDER_HEIGHT)
-            .clip(shape)
-            .background(tube.body)
-            .border(1.dp, tube.border, shape)
             // 讀屏聚焦到這根管子時要念得出目前在哪：沒有這個語意它就是一塊空白區域。
             // 用 0..1 的比例而不是實際值：這個元件只認得比例，實際值與單位由上面
             // 那一欄的讀數負責，兩邊各報一次反而會念出兩個不同的數。
@@ -327,39 +327,108 @@ private fun VerticalValueSlider(
                     change.consume()
                     latestOnFractionChange((latest - delta / trackPx).coerceIn(0f, 1f))
                 }
-            }
+            },
+    )
+}
+
+/** 液柱的朝向。見 [ValueTube]。 */
+internal enum class TubeOrientation { VERTICAL, HORIZONTAL }
+
+/**
+ * 一根液柱：管壁、填充、貫穿的刻痕、液面白線、管腔內壁陰影。
+ *
+ * 豎的橫的**是同一個元件**，只差 [orientation]。調節浮層裡是一根直立的管子，
+ * 橫屏 dock 的指標卡上是同一根管子躺下來——兩處長得一樣才不用讓使用者認兩次。
+ * 方向只影響「填充往哪長、刻痕怎麼排、白線怎麼擺」這三件事，其餘（管壁材質、
+ * 漸變的兩個端點色、內壁陰影的受光方向）兩個朝向完全共用。
+ *
+ * 內壁陰影的受光方向不跟著轉：光永遠從上方來，管子躺下來之後仍然是頂緣最暗、
+ * 底緣提亮。跟著轉會變成「左邊暗右邊亮」，那是另一個光源。
+ *
+ * 尺寸由呼叫端用 [modifier] 給（浮層給定寬高，dock 給高度加 weight），手勢也一樣
+ * 掛在 [modifier] 上——dock 那根只用來看，不接受拖動。
+ *
+ * @param fraction 當前位置 0..1
+ * @param orientation 朝向
+ * @param config 玻璃主題參數
+ * @param modifier 外部修飾符；尺寸、語意與手勢都從這裡進來
+ * @param corner 管壁圓角。預設是浮層那根的值，橫著用時通常傳「高度的一半」做成膠囊
+ * @param ticks 刻痕把量程等分成幾段；`null` 表示按固定間距鋪（浮層那根的原行為）
+ * @param showGlow 要不要畫液面往外散的光暈。矮的管子散不開，反而糊掉液面
+ */
+@Composable
+internal fun ValueTube(
+    fraction: Float,
+    orientation: TubeOrientation,
+    config: GlassConfig = LocalGlassConfig.current,
+    modifier: Modifier = Modifier,
+    corner: Dp = SLIDER_CORNER,
+    ticks: Int? = null,
+    showGlow: Boolean = true,
+) {
+    val clamped = fraction.coerceIn(0f, 1f)
+    val vertical = orientation == TubeOrientation.VERTICAL
+    val shape = RoundedCornerShape(corner)
+    val innerCorner = (corner - FILL_INSET).coerceAtLeast(0.dp)
+    val tube = tubeStyleFor(config.visualStyle)
+
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(tube.body)
+            .border(1.dp, tube.border, shape)
             // 刻痕畫在最後，才會蓋在填充之上
             .drawWithContent {
                 drawContent()
-                val left = RIDGE_INSET_X.toPx()
-                val right = size.width - left
-                val gap = RIDGE_GAP.toPx()
+                val inset = FILL_INSET.toPx()
                 // 刻痕要跟液柱**同一個形狀**地被裁掉。參考稿的 `.slider::after` 自帶
-                // `border-radius: 30px`，所以刻度線在管子上下的圓角處會跟著收窄；
-                // 直接畫直線的話，底部圓角那一段線就會伸出綠色液柱之外。
+                // `border-radius: 30px`，所以刻度線在管子兩端的圓角處會跟著收窄；
+                // 直接畫直線的話，端點圓角那一段線就會伸出綠色液柱之外。
                 val clip = Path().apply {
                     addRoundRect(
                         RoundRect(
-                            left = left,
-                            top = FILL_INSET.toPx(),
-                            right = right,
-                            bottom = size.height - FILL_INSET.toPx(),
-                            cornerRadius = CornerRadius(INNER_CORNER.toPx(), INNER_CORNER.toPx()),
+                            left = inset,
+                            top = inset,
+                            right = size.width - inset,
+                            bottom = size.height - inset,
+                            cornerRadius = CornerRadius(innerCorner.toPx(), innerCorner.toPx()),
                         )
                     )
                 }
                 clipPath(clip) {
-                    var y = size.height - RIDGE_INSET_Y.toPx()
-                    while (y > RIDGE_INSET_Y.toPx()) {
-                        drawLine(
-                            color = tube.ridge,
-                            start = Offset(left, y),
-                            end = Offset(right, y),
-                            // 1f 是一個**物理像素**，在 2.75x 的螢幕上細到幾乎看不見；
-                            // 參考稿的 1px 是 CSS 像素，要換成 dp
-                            strokeWidth = RIDGE_WIDTH.toPx(),
-                        )
-                        y -= gap
+                    // 1f 是一個**物理像素**，在 2.75x 的螢幕上細到幾乎看不見；
+                    // 參考稿的 1px 是 CSS 像素，要換成 dp
+                    val width = RIDGE_WIDTH.toPx()
+                    if (ticks != null) {
+                        // 等分成 ticks 段，畫中間那些分隔線
+                        if (ticks > 1) {
+                            val span = if (vertical) size.height else size.width
+                            val step = span / ticks
+                            for (index in 1 until ticks) {
+                                val at = step * index
+                                if (vertical) {
+                                    drawLine(tube.ridge, Offset(inset, at), Offset(size.width - inset, at), width)
+                                } else {
+                                    drawLine(tube.ridge, Offset(at, inset), Offset(at, size.height - inset), width)
+                                }
+                            }
+                        }
+                    } else {
+                        val gap = RIDGE_GAP.toPx()
+                        val edge = RIDGE_INSET_Y.toPx()
+                        if (vertical) {
+                            var y = size.height - edge
+                            while (y > edge) {
+                                drawLine(tube.ridge, Offset(inset, y), Offset(size.width - inset, y), width)
+                                y -= gap
+                            }
+                        } else {
+                            var x = edge
+                            while (x < size.width - edge) {
+                                drawLine(tube.ridge, Offset(x, inset), Offset(x, size.height - inset), width)
+                                x += gap
+                            }
+                        }
                     }
                 }
 
@@ -369,67 +438,100 @@ private fun VerticalValueSlider(
                 //   inset 0 -2px 4px rgba(255,255,255,.95) 底緣提亮
                 // Compose 沒有 inset shadow，用多層遞減的同心描邊把模糊堆出來；
                 // 畫在刻痕之後，連填充一起壓住——這是「管子」而不是「一塊色條」的來源。
-                drawTubeWell(cornerPx = SLIDER_CORNER.toPx())
+                drawTubeWell(cornerPx = corner.toPx())
             },
-        contentAlignment = Alignment.BottomCenter,
+        contentAlignment = if (vertical) Alignment.BottomCenter else Alignment.CenterStart,
     ) {
         // 內圈：四邊各縮 4dp、圓角跟著管壁收 4dp。填充畫在這一層裡面，
         // 由它負責裁切——這樣填充本身可以保持平頭，等它長到管口時，
-        // 頂端自然被這圈圓角削成和管壁一樣的弧，中途則是一條平的液面。
+        // 端點自然被這圈圓角削成和管壁一樣的弧，中途則是一條平的液面。
         Box(
             modifier = Modifier
                 // 四邊都留一圈內縮。參考稿的 `.slider-fill` 只寫了 left/right/bottom，
-                // 拉到滿量程時填充直接被 `overflow: hidden` 切在管口上，頂端沒有邊距——
+                // 拉到滿量程時填充直接被 `overflow: hidden` 切在管口上，另一端沒有邊距——
                 // 那是 CSS 定位的副作用，不是想要的樣子。
                 .padding(FILL_INSET)
                 .fillMaxSize()
-                .clip(RoundedCornerShape(INNER_CORNER)),
-            contentAlignment = Alignment.BottomCenter,
+                .clip(RoundedCornerShape(innerCorner)),
+            contentAlignment = if (vertical) Alignment.BottomCenter else Alignment.CenterStart,
         ) {
-            // 填充：平頭 + 下圓角，從管底長上來
+            // 填充：平頭 + 起始端圓角，從管底（左端）長出來
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(clamped)
+                    .then(
+                        if (vertical) {
+                            Modifier.fillMaxWidth().fillMaxHeight(clamped)
+                        } else {
+                            Modifier.fillMaxHeight().fillMaxWidth(clamped)
+                        }
+                    )
                     .clip(
-                        RoundedCornerShape(
-                            bottomStart = INNER_CORNER,
-                            bottomEnd = INNER_CORNER,
-                        )
+                        if (vertical) {
+                            RoundedCornerShape(bottomStart = innerCorner, bottomEnd = innerCorner)
+                        } else {
+                            RoundedCornerShape(topStart = innerCorner, bottomStart = innerCorner)
+                        }
                     )
                     .background(
-                        Brush.verticalGradient(
-                            listOf(config.accentLightColor, config.accentToneColor)
-                        )
+                        if (vertical) {
+                            Brush.verticalGradient(
+                                listOf(config.accentLightColor, config.accentToneColor)
+                            )
+                        } else {
+                            Brush.horizontalGradient(
+                                listOf(config.accentLightColor, config.accentToneColor)
+                            )
+                        }
                     )
             )
 
-            // 液面往上散出去的光暈。參考稿 `.slider-fill` 帶一道
+            // 液面往外散出去的光暈。參考稿 `.slider-fill` 帶一道
             // `box-shadow: 0 -5px 16px rgba(lime,.24)`（Tactile 是 `0 0 12px …,.48`）：
-            // 液柱是會發光的，光從液面往上打進空管腔裡。
+            // 液柱是會發光的，光從液面往空管腔裡打。
             //
             // Compose 沒有彩色外發光（Modifier.shadow 的顏色在多數機型上不生效），
-            // 改成在液面上方鋪一道往上漸淡的漸層。畫在填充**之後**、白線之前——
-            // 它只佔液面以上的空管腔，跟兩者都不重疊，但白線必須壓在最上面。
+            // 改成在液面外側鋪一道漸淡的漸層。畫在填充**之後**、白線之前——
+            // 它只佔液面以外的空管腔，跟兩者都不重疊，但白線必須壓在最上面。
             //
-            // 高度用 fraction 撐出來再往上位移，這樣光暈永遠跟著液面走；
+            // 尺寸用 fraction 撐出來再往外位移，這樣光暈永遠跟著液面走；
             // 拉到滿量程時它被管口的 clip 裁掉，跟參考稿的 `overflow: hidden` 一致。
-            Box(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(clamped),
-                contentAlignment = Alignment.TopCenter,
-            ) {
+            if (showGlow) {
                 Box(
-                    Modifier
-                        .offset(y = -tube.glowHeight)
-                        .fillMaxWidth()
-                        .height(tube.glowHeight)
-                        .background(
-                            Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                1f to config.accentToneColor.copy(alpha = tube.glowAlpha),
+                    modifier = if (vertical) {
+                        Modifier.fillMaxWidth().fillMaxHeight(clamped)
+                    } else {
+                        Modifier.fillMaxHeight().fillMaxWidth(clamped)
+                    },
+                    contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterEnd,
+                ) {
+                    Box(
+                        Modifier
+                            .then(
+                                if (vertical) {
+                                    Modifier.offset(y = -tube.glowHeight)
+                                        .fillMaxWidth()
+                                        .height(tube.glowHeight)
+                                } else {
+                                    Modifier.offset(x = tube.glowHeight)
+                                        .fillMaxHeight()
+                                        .width(tube.glowHeight)
+                                }
                             )
-                        )
-                )
+                            .background(
+                                if (vertical) {
+                                    Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        1f to config.accentToneColor.copy(alpha = tube.glowAlpha),
+                                    )
+                                } else {
+                                    Brush.horizontalGradient(
+                                        0f to config.accentToneColor.copy(alpha = tube.glowAlpha),
+                                        1f to Color.Transparent,
+                                    )
+                                }
+                            )
+                    )
+                }
             }
 
             // 液面標記：一道白線。參考稿在線上還騎了一枚「當前」小膠囊，那個不要——
@@ -439,14 +541,26 @@ private fun VerticalValueSlider(
             // 白線在上面一清二楚。之前為了「淺色管壁上看不見白線」把它改成深色，
             // 前提就搞錯了：線永遠貼著液面，不會落在空管壁上。
             Box(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(clamped),
-                contentAlignment = Alignment.TopCenter,
+                modifier = if (vertical) {
+                    Modifier.fillMaxWidth().fillMaxHeight(clamped)
+                } else {
+                    Modifier.fillMaxHeight().fillMaxWidth(clamped)
+                },
+                contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterEnd,
             ) {
                 Box(
                     Modifier
-                        .padding(horizontal = THUMB_INSET_X)
-                        .fillMaxWidth()
-                        .height(THUMB_HEIGHT)
+                        .then(
+                            if (vertical) {
+                                Modifier.padding(horizontal = THUMB_INSET_X)
+                                    .fillMaxWidth()
+                                    .height(THUMB_HEIGHT)
+                            } else {
+                                Modifier.padding(vertical = THUMB_INSET_X)
+                                    .fillMaxHeight()
+                                    .width(THUMB_HEIGHT)
+                            }
+                        )
                         .background(THUMB_COLOR)
                 )
             }
@@ -571,7 +685,7 @@ private fun StepButton(
  * @param glowAlpha 液面往上那道光暈的濃度
  * @param glowHeight 光暈往上散開的距離
  */
-private data class TubeStyle(
+internal data class TubeStyle(
     val body: Brush,
     val border: Color,
     val ridge: Color,
@@ -579,7 +693,7 @@ private data class TubeStyle(
     val glowHeight: Dp,
 )
 
-private fun tubeStyleFor(style: GlassVisualStyle): TubeStyle = when (style) {
+internal fun tubeStyleFor(style: GlassVisualStyle): TubeStyle = when (style) {
     GlassVisualStyle.TACTILE -> TubeStyle(
         // 橫向三段：兩側暗、中間亮，看起來才是一根圓柱而不是一塊板
         body = Brush.horizontalGradient(

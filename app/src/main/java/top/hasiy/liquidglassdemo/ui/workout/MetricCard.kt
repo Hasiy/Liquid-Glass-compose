@@ -23,7 +23,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -38,10 +37,8 @@ import top.hasiy.designsystem.SevenSegmentText
 import top.hasiy.designsystem.TACTILE_LAMP
 import top.hasiy.designsystem.TACTILE_LAMP_HEIGHT
 import top.hasiy.designsystem.TACTILE_LAMP_WIDTH
-import top.hasiy.designsystem.accentLightColor
 import top.hasiy.designsystem.accentToneColor
 import top.hasiy.designsystem.lineColor
-import top.hasiy.designsystem.liftColor
 import top.hasiy.designsystem.mutedContentColor
 import top.hasiy.designsystem.panelColor
 import top.hasiy.designsystem.quietAccentColor
@@ -86,6 +83,8 @@ fun MetricCard(
     trend: Boolean = false,
     live: Boolean = true,
     flat: Boolean = false,
+    stepRange: ControlRange? = null,
+    onStep: (Int) -> Unit = {},
 ) {
     val locked = readOnlyReason != null
     val digital = config.visualStyle == GlassVisualStyle.DIGITAL
@@ -93,65 +92,34 @@ fun MetricCard(
     // Digital 是低圓角的實色面板，Tactile 是凸起膠帽，兩者都不是「玻璃卡換個顏色」
     val corner = metricCardCorner(config, density)
     val shape = RoundedCornerShape(corner)
-    val borderColor = if (adjustable) {
-        // 參考稿是 `inset 0 0 0 1.5px rgba(lime,.45)`
-        config.accentToneColor.copy(alpha = ADJUST_BORDER_ALPHA)
-    } else {
-        config.lineColor
-    }
-    val fill = if (adjustable) {
-        // 可調節的卡片：**提亮一階再疊一層極淡的強調色**，不是直接把強調色鋪在屏底上。
-        //
-        // 參考稿 Nordic 是 `background: #e7efe9`——那個色比面板 `#e3e3e3` 還亮，
-        // 帶一點綠。強調色 6% 直接壓在面板上算出來是 `#d6dfdc`，比面板暗，
-        // 一排卡片裡它反而沉下去了。改成 lift 打底（`#f1f1f1`）再疊 accent，
-        // 疊的是 accentLight 而不是 accent：主色太深，同樣的觀感要把 alpha 壓到 5%
-        // 以下，三個通道就配不平（實測合成出 `#e5edea`，藍通道偏了）。
-        // accentLight 8% 疊在 lift 上是 `#e7efec`，和參考稿的 `#e7efe9` 只差藍通道 3。
-        SolidColor(
-            config.accentLightColor.copy(alpha = ADJUST_FILL_ALPHA).compositeOver(config.liftColor)
-        )
-    } else {
-        // 卡片底就是 panel 那一階，直接讀 token。
-        //
-        // 原本照抄參考稿基礎主題的 `rgba(255,255,255,.055)` 疊在內容色上，
-        // 那組數字只在**深色屏**成立：白色低透明度疊在深底上是提亮。換到淺色配色，
-        // screenContent 變成近黑，同一組 alpha 就成了「往下壓一階」，
-        // 卡片比屏底還暗，跟參考稿 `--panel` 高於 `--screen` 的方向正好相反。
-        //
-        // panel token 本身就是那層漸層的等效實色（深色配色 #171B1C 對應
-        // 5.5% 白疊在 #070909 上），讀它 8 組配色都對。
-        SolidColor(config.panelColor)
-    }
+    // 可調節的格子**不套綠框**。
+    //
+    // 參考稿原本是 `inset 0 0 0 1.5px rgba(lime,.45)`，但一排讀數裡只有一格被綠色
+    // 圈起來，那一格會從版面上跳出來——使用者要的是「和別的格子一樣，只是多了
+    // 一顆燈和一組按鍵」。「這一格能調」由右上角那顆指示燈負責說，框不必再說一次。
+    //
+    // 只讀時的虛線框仍然要（見下面的 dashedBorder）：那是「本來能調、現在不能」，
+    // 跟普通讀數格不是同一件事，得有個記號。
+    val borderColor = config.lineColor
+    // 卡片底就是 panel 那一階，可調節的格子也一樣——**不再疊淡綠底**。
+    //
+    // 參考稿給可調節的格子鋪了一層極淡的強調色（Nordic 的 `#e7efe9`），但一排
+    // 讀數裡只有一格顏色不同，那一格就從版面上跳出來。使用者要的是「和別的格子
+    // 一樣，只是多了一顆燈和一組按鍵」：能不能調由右上角那顆指示燈負責說，
+    // 底色不必再說一次。
+    //
+    // 原本照抄參考稿基礎主題的 `rgba(255,255,255,.055)` 疊在內容色上，
+    // 那組數字只在**深色屏**成立：白色低透明度疊在深底上是提亮。換到淺色配色，
+    // screenContent 變成近黑，同一組 alpha 就成了「往下壓一階」，
+    // 卡片比屏底還暗，跟參考稿 `--panel` 高於 `--screen` 的方向正好相反。
+    //
+    // panel token 本身就是那層漸層的等效實色（深色配色 #171B1C 對應
+    // 5.5% 白疊在 #070909 上），讀它 8 組配色都對。
+    val fill = SolidColor(config.panelColor)
 
     val surface: Modifier = when {
-        // dock 裡的格子沒有自己的底，整塊面板由外層畫——**可調節的那一格例外**。
-        //
-        // 「這一格能調」是靠淡綠底加一圈綠框說出來的（見 fill / borderColor）。
-        // 橫屏把它抹掉的話，同一個阻力格在豎屏有框、橫屏沒框，看起來像兩個東西，
-        // 而且橫屏就只剩角上那對很小的「− ＋」在暗示可調。
-        //
-        // 底與框都往內縮一點，用 drawBehind 而不是 padding：dock 的格子之間沒有
-        // 間距、只有一條分隔線，貼著邊畫會和分隔線擠成兩條並排的線。內縮如果用
-        // padding，這一格的內容就比左右鄰居往裡挪，一排讀數的基線全歪掉。
-        flat && adjustable -> Modifier.drawBehind {
-            val inset = FLAT_ADJUST_INSET.toPx()
-            val box = Size(size.width - inset * 2, size.height - inset * 2)
-            val radius = CornerRadius((corner - FLAT_ADJUST_INSET).toPx())
-            drawRoundRect(
-                brush = fill,
-                topLeft = Offset(inset, inset),
-                size = box,
-                cornerRadius = radius,
-            )
-            drawRoundRect(
-                color = borderColor,
-                topLeft = Offset(inset, inset),
-                size = box,
-                cornerRadius = radius,
-                style = Stroke(width = ADJUST_BORDER_WIDTH.toPx()),
-            )
-        }
+        // dock 裡的格子沒有自己的底，整塊面板由外層畫——可調節的那一格**也一樣**。
+        // 它跟旁邊的讀數格看起來就該是同一種格子，差別只在右上角那顆燈和那組按鍵。
         flat -> Modifier
         // 膠帽自帶漸層、描邊與內外光影，不再疊玻璃卡的那層底
         tactile -> Modifier.tactileKeycap(corner)
@@ -173,7 +141,6 @@ fun MetricCard(
                     // 膠帽自帶描邊，再描一圈會把立體感壓平。可調節的也一樣——
                     // Tactile 用指示燈表達可調，套一圈綠框就變成兩套語彙了。
                     tactile -> Modifier
-                    adjustable -> Modifier.border(ADJUST_BORDER_WIDTH, borderColor, shape)
                     else -> Modifier.border(width = 1.dp, color = borderColor, shape = shape)
                 }
             )
@@ -257,15 +224,48 @@ fun MetricCard(
             }
             // 參考稿的 .mini-step 是 `float: right`，落在**數值這一行**的行尾，
             // 不是標題行。只讀時整個拿掉——留著會讓人以為還能調。
+            //
+            // 給了量程就換成真按鍵：橫屏 dock 的格子併兩欄之後放得下一組鍵，
+            // 就地調比「開浮層、調、關浮層」少兩次分心。卡片的底、框與右上角
+            // 那顆燈都不變——樣式照舊，只是那對小小的「− ＋」從提示變成能按的。
             if (adjustable && !locked) {
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = stringResource(R.string.metric_step_hint),
-                    // 說明性小字，淺色配色下整批降回中性——見 quietAccentColor
-                    color = config.quietAccentColor,
-                    fontSize = density.pick(STEP_HINT_SIZE, COMPACT_LABEL_SIZE, DENSE_LABEL_SIZE),
-                    fontWeight = FontWeight.Medium,
-                )
+                if (stepRange != null) {
+                    // 刻度擺在數值與按鍵**之間**，佔掉中間剩下的寬度，不另起一行。
+                    //
+                    // 一開始放在 Column 的下一行，結果整條被裁掉：dock 的格子高度是
+                    // 固定的（72/64/56dp），標籤行加上按鍵那 44dp 的命中區就已經吃滿，
+                    // 再多一行根本畫不出來。擺進同一行是唯一不動格高的做法。
+                    AdjustScale(
+                        range = stepRange,
+                        value = value.toFloatOrNull() ?: stepRange.min,
+                        config = config,
+                        density = density,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = SCALE_GAP)
+                            // 這一行是按基線對齊的（數值與單位要對基線），刻度沒有
+                            // 基線可對，得自己居中——不然它會貼在行底。
+                            .align(Alignment.CenterVertically),
+                    )
+                    AdjustKeys(
+                        range = stepRange,
+                        onStep = onStep,
+                        metricLabel = stringResource(metric.labelRes),
+                        unit = metric.unitRes?.let { stringResource(it) }.orEmpty(),
+                        config = config,
+                        density = density,
+                        locked = false,
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = stringResource(R.string.metric_step_hint),
+                        // 說明性小字，淺色配色下整批降回中性——見 quietAccentColor
+                        color = config.quietAccentColor,
+                        fontSize = density.pick(STEP_HINT_SIZE, COMPACT_LABEL_SIZE, DENSE_LABEL_SIZE),
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
             if (trend) {
                 Spacer(Modifier.weight(1f))
@@ -386,16 +386,12 @@ private val EMPTY_STROKE = 1.dp
 private val EMPTY_DASH = 3.dp
 
 /** 可調節卡片的描邊與底色濃度，取自參考稿的 `.metric.adjust` */
-private val ADJUST_BORDER_WIDTH = 1.5.dp
 
 /**
  * flat 的可調節格子，底與框往內縮多少。
  *
  * dock 的格子之間只隔一條分隔線，不縮的話綠框會貼在分隔線上。
  */
-private val FLAT_ADJUST_INSET = 3.dp
-private const val ADJUST_BORDER_ALPHA = 0.45f
-private const val ADJUST_FILL_ALPHA = 0.08f
 
 /** 一般卡片的底：在屏底上鋪一層極淡的內容色，做出「比屏底高一階」 */
 
@@ -425,6 +421,9 @@ private val DASH_OFF = 3.dp
 private val LABEL_SIZE = 11.sp
 private val VALUE_SIZE = 22.sp
 private val UNIT_SIZE = 10.sp
+/** 刻度條與兩側（數值、按鍵）之間的間距。 */
+private val SCALE_GAP = 8.dp
+
 private val STEP_HINT_SIZE = 14.sp
 
 /** 只讀提示比標籤再小一號，參考稿是 6px 對 7px */

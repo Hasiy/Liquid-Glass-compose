@@ -502,6 +502,15 @@ private fun LandscapeLayout(
                 config = config,
                 onAdjust = controller::beginAdjust,
                 onEdit = controller::beginEdit,
+                // 橫屏 dock 的格子寬而扁，兩欄併起來放得下一組真按鍵——阻力與目標
+                // 速度就地調，不必再開浮層。豎屏與側邊不開：豎屏一格只有半屏寬、
+                // 側邊只有一欄，兩欄擺不下（見 InlineAdjustCard）。
+                //
+                // 代價是這兩個指標各吃掉一格位置：2×4 的 dock 原本擺得下八個讀數，
+                // 兩張調節卡進去就只剩六個。這是刻意的取捨——運動中改阻力的頻率
+                // 比多看一個讀數高。
+                inlineAdjust = true,
+                onStep = controller::stepValue,
                 columns = state.dockSpec.columns,
                 density = state.dockSpec.density,
                 // dock 是**等高網格**：每列的高度必須一樣，否則分隔線按等分算出來的
@@ -668,6 +677,26 @@ private fun ScenarioStrip(
                                 WorkoutDeviceCapability.IndoorBike.controllableMetricIds
                             } else {
                                 emptySet()
+                            }
+                        )
+                    )
+                },
+                config = config,
+            )
+            // 目標速度預設不可調（室內單車的 FTMS 能力只給阻力）。橫屏 dock 上
+            // 「速度佔兩欄、四顆鍵」那一態要能看到，就得有台支援它的機器——
+            // 這顆開關把 target-speed 加進可控清單，等同換成 DualTargetBike。
+            GlassFilterChip(
+                label = stringResource(R.string.scenario_speed_control),
+                selected = TARGET_SPEED_ID in state.device.controllableMetricIds,
+                onClick = {
+                    val ids = state.device.controllableMetricIds
+                    controller.useDevice(
+                        state.device.copy(
+                            controllableMetricIds = if (TARGET_SPEED_ID in ids) {
+                                ids - TARGET_SPEED_ID
+                            } else {
+                                ids + TARGET_SPEED_ID
                             }
                         )
                     )
@@ -917,6 +946,9 @@ private const val DRAG_ZONE_LAYER = 1f
  */
 private fun dockCellHeight(density: MetricCardDensity): Dp =
     density.pick(DOCK_CELL_REGULAR, DOCK_CELL_COMPACT, DOCK_CELL_DENSE)
+
+/** 目標速度的指標 ID，場景開關要按它增減可控清單。 */
+private const val TARGET_SPEED_ID = "target-speed"
 
 private val DOCK_CELL_REGULAR = 72.dp
 private val DOCK_CELL_COMPACT = 64.dp
