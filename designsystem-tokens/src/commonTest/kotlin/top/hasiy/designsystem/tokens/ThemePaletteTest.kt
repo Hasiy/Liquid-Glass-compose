@@ -44,7 +44,8 @@ class ThemePaletteTest {
         assertAccent(ThemePalette.Lime, 0xFFDFFF32L, 0xFFEFFF9AL, 0xFF69E2CEL, 0xFF151800L)
         assertAccent(ThemePalette.Sky, 0xFF5AA9EEL, 0xFFC4E2FBL, 0xFF6FD3E8L, 0xFF06202FL)
         assertAccent(ThemePalette.Nordic, 0xFF079D68L, 0xFF74D4ACL, 0xFF72C7A9L, 0xFFFFFFFFL)
-        assertAccent(ThemePalette.Ocean, 0xFF43D9FFL, 0xFFB8F2FFL, 0xFF5B7EFFL, 0xFF041E29L)
+        // 冰川蓝挪到白色系后整组重定过：原来那套是给深色屏配的
+        assertAccent(ThemePalette.Ocean, 0xFF168FB4L, 0xFF7FCADFL, 0xFF5B93C7L, 0xFFFFFFFFL)
         assertAccent(ThemePalette.Ember, 0xFFFF9A3DL, 0xFFFFD0A3L, 0xFFFF635BL, 0xFF2A1400L)
         assertAccent(ThemePalette.Aurora, 0xFFB78CFFL, 0xFFDECAFFL, 0xFF45E2BEL, 0xFF1A0F2EL)
     }
@@ -57,6 +58,7 @@ class ThemePaletteTest {
     @Test
     fun `light surface follows screen not canvas`() {
         assertTrue(ThemePalette.Nordic.isLight)
+        assertTrue(ThemePalette.Ocean.isLight)
         assertTrue(ThemePalette.Digital.isLight)
         assertFalse(ThemePalette.Tactile.isLight)
         assertFalse(ThemePalette.Lime.isLight)
@@ -67,7 +69,6 @@ class ThemePaletteTest {
         listOf(
             ThemePalette.Lime,
             ThemePalette.Sky,
-            ThemePalette.Ocean,
             ThemePalette.Ember,
             ThemePalette.Aurora,
         ).forEach { palette ->
@@ -75,10 +76,11 @@ class ThemePaletteTest {
         }
     }
 
-    /** 只有压在浅底上的小字需要加深变体，Nordic 是唯一一组。 */
+    /** 只有压在浅底上的小字需要加深变体，也就是白色系那两组。 */
     @Test
-    fun `nordic uses a darker accent for text on light surfaces`() {
+    fun `light palettes use a darker accent for text on light surfaces`() {
         assertEquals(0xFF0A6D4BL, ThemePalette.Nordic.accentDeep)
+        assertEquals(0xFF0A6A87L, ThemePalette.Ocean.accentDeep)
     }
 
     /**

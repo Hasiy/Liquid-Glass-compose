@@ -104,8 +104,8 @@ fun GlassBottomSheet(
     ) {
         Box(
             modifier = Modifier
-                .glassOverlayBackdrop(shape = BOTTOM_SHEET_SHAPE, config = config)
-                .glassSurface(shape = BOTTOM_SHEET_SHAPE, config = config)
+                .glassOverlayBackdrop(shape = BOTTOM_SHEET_SHAPE, config = config.asOverlaySurface(deep = true))
+                .glassSurface(shape = BOTTOM_SHEET_SHAPE, config = config.asOverlaySurface(deep = true))
                 .padding(20.dp)
         ) {
             content()
@@ -217,8 +217,8 @@ fun GlassModalBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassOverlayBackdrop(shape = BOTTOM_SHEET_SHAPE, config = config)
-                .glassSurface(shape = BOTTOM_SHEET_SHAPE, config = config)
+                .glassOverlayBackdrop(shape = BOTTOM_SHEET_SHAPE, config = config.asOverlaySurface(deep = true))
+                .glassSurface(shape = BOTTOM_SHEET_SHAPE, config = config.asOverlaySurface(deep = true))
                 .padding(20.dp)
         ) {
             content()
@@ -326,9 +326,10 @@ fun RowScope.GlassNavigationBarItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CompositionLocalProvider(
-            // 啟用強調色時，選中項的圖示/文字與淡底同色；否則沿用內容色
+            // 選中項的圖示/文字與淡底同色。用 accentDeep 而不是 accent：
+            // 淡底透出來的是原表面色，淺色主題下 accent 壓不住（Nordic 只有 2.3:1）
             LocalContentColor provides if (selected && config.accentEnabled) {
-                config.accentColor
+                config.accentDeepColor
             } else {
                 config.contentColor.copy(alpha = selectedAlpha)
             }
@@ -439,9 +440,10 @@ fun GlassNavigationRailItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CompositionLocalProvider(
-            // 啟用強調色時，選中項的圖示/文字與淡底同色；否則沿用內容色
+            // 選中項的圖示/文字與淡底同色。用 accentDeep 而不是 accent：
+            // 淡底透出來的是原表面色，淺色主題下 accent 壓不住（Nordic 只有 2.3:1）
             LocalContentColor provides if (selected && config.accentEnabled) {
-                config.accentColor
+                config.accentDeepColor
             } else {
                 config.contentColor.copy(alpha = selectedAlpha)
             }
@@ -494,8 +496,8 @@ fun GlassModalNavigationDrawer(
             ) {
                 Column(
                     modifier = Modifier
-                        .glassOverlayBackdrop(shape = NAVIGATION_DRAWER_SHAPE, config = config)
-                        .glassSurface(shape = NAVIGATION_DRAWER_SHAPE, config = config)
+                        .glassOverlayBackdrop(shape = NAVIGATION_DRAWER_SHAPE, config = config.asOverlaySurface(deep = true))
+                        .glassSurface(shape = NAVIGATION_DRAWER_SHAPE, config = config.asOverlaySurface(deep = true))
                         .padding(16.dp),
                     content = drawerContent
                 )

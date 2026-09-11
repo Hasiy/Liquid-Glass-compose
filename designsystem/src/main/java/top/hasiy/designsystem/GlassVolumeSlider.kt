@@ -134,7 +134,7 @@ fun GlassVolumeSlider(
             .height(height)
             .glassSurface(
                 shape = trackShape,
-                config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                config = config.asTrackSurface(enabled)
             )
             .then(gestureModifier),
         contentAlignment = Alignment.CenterStart

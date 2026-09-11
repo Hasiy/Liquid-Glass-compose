@@ -38,6 +38,7 @@ import top.hasiy.designsystem.tokens.ThemePalette
 data class GlassPalette(
     val accentLight: Color = Color.Unspecified,
     val accentDeep: Color = Color.Unspecified,
+    val quietAccent: Color = Color.Unspecified,
     val onAccent: Color = Color.Unspecified,
     val ambient: Color = Color.Unspecified,
     val track: Color = Color.Unspecified,
@@ -53,6 +54,7 @@ data class GlassPalette(
     val sunk: Color = Color.Unspecified,
     val glass: Color = Color.Unspecified,
     val glassDeep: Color = Color.Unspecified,
+    val sheen: Color = Color.Unspecified,
 ) {
     companion object {
         /** 未提供任何語意色：元件全部走 [GlassConfig] 的回退推導。 */
@@ -64,6 +66,7 @@ data class GlassPalette(
 fun ThemePalette.toGlassPalette(): GlassPalette = GlassPalette(
     accentLight = accentLight.toPaletteColor(),
     accentDeep = accentDeep.toPaletteColor(),
+    quietAccent = quietAccent.toOptionalPaletteColor(),
     onAccent = onAccent.toPaletteColor(),
     ambient = ambient.toPaletteColor(),
     track = track.toPaletteColor(),
@@ -79,6 +82,7 @@ fun ThemePalette.toGlassPalette(): GlassPalette = GlassPalette(
     sunk = sunk.toPaletteColor(),
     glass = glass.toPaletteColor(),
     glassDeep = glassDeep.toPaletteColor(),
+    sheen = sheen.toOptionalPaletteColor(),
 )
 
 /**
@@ -90,6 +94,15 @@ fun ThemePalette.toGlassPalette(): GlassPalette = GlassPalette(
  * 之後任何 `copy()` / `luminance()` 都會 ArrayIndexOutOfBoundsException。
  */
 private fun Long.toPaletteColor(): Color = Color(this)
+
+/**
+ * 同上，但把 `0L` 當成「這組配色沒給這個 token」。
+ *
+ * 不能直接走 [toPaletteColor]：`Color(0L)` 是**透明黑**，`isSpecified` 為 true，
+ * 於是回退分支永遠不會走到，元件會拿到一個看不見的顏色。
+ */
+private fun Long.toOptionalPaletteColor(): Color =
+    if (this == 0L) Color.Unspecified else Color(this)
 
 // ---------- 語意色讀取入口 ----------
 // 元件只讀這些屬性，不直接讀 GlassConfig.palette：未指定的 token 需要回退，
@@ -113,6 +126,18 @@ val GlassConfig.accentLightColor: Color
 /** 強調色的加深變體。未指定時回退到強調色本身。 */
 val GlassConfig.accentDeepColor: Color
     get() = palette.accentDeep.takeOrElse { accentColor }
+
+/**
+ * 裝飾性小字用的強調色。
+ *
+ * 指標卡的 ±、量程旁的 STEP、抽屜裡的「已在別處」這種**說明字**：在深色屏上用強調色
+ * 是點綴，換到淺色屏上就是一路綠到底，而且小字對比度不夠。配色可以給一個中性色
+ * 讓它們整批降下來（見 [GlassPalette.quietAccent]），沒給就照舊走強調色。
+ *
+ * 只管裝飾字。CTA、選中態、當前調節項、連接與錄製狀態這些**語義**色塊不走這裡。
+ */
+val GlassConfig.quietAccentColor: Color
+    get() = palette.quietAccent.takeOrElse { accentToneColor }
 
 /**
  * 換掉強調色，並讓它的淺／深變體跟著回退。
@@ -237,6 +262,15 @@ val GlassConfig.glassOverlayColor: Color
 /** 更深一階的浮層表面色。未指定時回退到浮層表面色。 */
 val GlassConfig.glassDeepOverlayColor: Color
     get() = palette.glassDeep.takeOrElse { glassOverlayColor }
+
+/**
+ * 凸起表面的受光高光色。
+ *
+ * 儀表盤面、凸圓容器的光心。未指定時回退到面板色——兩者同色時漸層自然退化成純色，
+ * 這正是深色屏的樣子（參考稿只為淺色配色覆寫了盤面的 radial-gradient）。
+ */
+val GlassConfig.sheenColor: Color
+    get() = palette.sheen.takeOrElse { panelColor }
 
 /** 軌道色由表面色推導時的對比比例 */
 private const val TRACK_CONTRAST = 0.15f

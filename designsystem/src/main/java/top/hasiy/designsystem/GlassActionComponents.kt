@@ -314,14 +314,8 @@ fun GlassFilterChip(
         return
     }
 
-    // 選中態：見 GlassConfig.asSelectedSurface
-    val effectiveConfig = if (selected) {
-        config.asSelectedSurface().let {
-            if (config.accentEnabled) it.copy(contentColor = config.accentColor) else it
-        }
-    } else {
-        config
-    }
+    // 選中態：見 GlassConfig.asSelectedSurface，前景色它已經挑好了
+    val effectiveConfig = if (selected) config.asSelectedSurface() else config
 
     GlassChipSurface(
         onClick = onClick,
@@ -460,8 +454,8 @@ fun GlassSnackbar(
     ) {
         Box(
             modifier = Modifier
-                .glassOverlayBackdrop(shape = SNACKBAR_SHAPE, config = config)
-                .glassSurface(shape = SNACKBAR_SHAPE, config = config)
+                .glassOverlayBackdrop(shape = SNACKBAR_SHAPE, config = config.asOverlaySurface())
+                .glassSurface(shape = SNACKBAR_SHAPE, config = config.asOverlaySurface())
                 .padding(16.dp)
         ) {
             Row(

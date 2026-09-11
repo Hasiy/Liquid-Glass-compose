@@ -751,7 +751,7 @@ fun GlassProgressBar(
                 .height(height)
                 .glassSurface(
                     shape = trackShape,
-                    config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                    config = config.asTrackSurface()
                 )
         ) {
             val segmentWidth = maxWidth * 0.35f
@@ -772,7 +772,7 @@ fun GlassProgressBar(
                 .height(height)
                 .glassSurface(
                     shape = trackShape,
-                    config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                    config = config.asTrackSurface()
                 )
         ) {
             Box(
@@ -838,8 +838,8 @@ fun GlassDialog(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 32.dp)
-                .glassOverlayBackdrop(shape = dialogShape, config = config),
-            config = config,
+                .glassOverlayBackdrop(shape = dialogShape, config = config.asOverlaySurface(deep = true)),
+            config = config.asOverlaySurface(deep = true),
             shape = dialogShape
         ) {
             Column(
@@ -921,8 +921,8 @@ fun GlassPopup(
         GlassCard(
             modifier = modifier
                 .padding(16.dp)
-                .glassOverlayBackdrop(shape = popupShape, config = config),
-            config = config,
+                .glassOverlayBackdrop(shape = popupShape, config = config.asOverlaySurface()),
+            config = config.asOverlaySurface(),
             shape = popupShape
         ) {
             Box(modifier = Modifier.padding(16.dp)) {

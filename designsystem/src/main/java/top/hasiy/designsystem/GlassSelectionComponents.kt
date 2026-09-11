@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,7 +76,6 @@ fun GlassCheckbox(
         return
     }
 
-    val contentColor = config.contentColor
     val iconAlpha = if (enabled) 1f else DISABLED_ALPHA
     val boxShape = CHECKBOX_SHAPE
     val boxConfig = if (checked) {
@@ -83,11 +83,8 @@ fun GlassCheckbox(
     } else {
         config.asControlSurface().copy(shadowElevation = 0.dp)
     }
-    val checkmarkColor = if (checked && config.accentEnabled) {
-        Color.White
-    } else {
-        contentColor
-    }
+    // 勾的顏色跟著方框底走：asSelectedSurface 已經依底色挑好前景色
+    val checkmarkColor = boxConfig.contentColor
 
     Box(
         modifier = modifier.size(CHECKBOX_SIZE),
@@ -175,18 +172,14 @@ fun GlassRadioButton(
         return
     }
 
-    val contentColor = config.contentColor
     val iconAlpha = if (enabled) 1f else DISABLED_ALPHA
     val radioConfig = if (selected) {
         config.asSelectedSurface().copy(shadowElevation = 0.dp)
     } else {
         config.asControlSurface().copy(shadowElevation = 0.dp)
     }
-    val indicatorColor = if (selected && config.accentEnabled) {
-        config.accentColor
-    } else {
-        contentColor
-    }
+    // 指示點的顏色跟著圓底走：選中時是 22% 淡底，前景由 asSelectedSurface 給到 accentDeep
+    val indicatorColor = radioConfig.contentColor
 
     Box(
         modifier = modifier
@@ -229,6 +222,8 @@ private val DrawScope.sizePx: Float
  * @param enabled 是否可用
  * @param valueRange 數值範圍
  * @param steps 區間內的離散步數（不含起訖點）
+ * @param onValueChangeFinished 一次拖動或點擊結束時回呼。需要「拖的時候只預覽、
+ *   鬆手才提交」的場景用它——例如寫入實體裝置，每動一格就發一次請求並不合理
  */
 @Composable
 fun GlassSlider(
@@ -239,6 +234,7 @@ fun GlassSlider(
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null,
 ) {
     if (config.native) {
         Slider(
@@ -247,7 +243,8 @@ fun GlassSlider(
             modifier = modifier,
             enabled = enabled,
             valueRange = valueRange,
-            steps = steps
+            steps = steps,
+            onValueChangeFinished = onValueChangeFinished
         )
         return
     }
@@ -268,6 +265,8 @@ fun GlassSlider(
         val fraction = ((value - valueRange.start) / rangeLength).coerceIn(0f, 1f)
 
         var dragOffset by remember { mutableFloatStateOf(0f) }
+        var dragStartFraction by remember { mutableFloatStateOf(fraction) }
+        val latestFraction by rememberUpdatedState(fraction)
         val thumbOffset by animateDpAsState(
             targetValue = trackWidth * fraction,
             label = "glassSliderThumb"
@@ -293,7 +292,7 @@ fun GlassSlider(
                 .height(SLIDER_TRACK_HEIGHT)
                 .glassSurface(
                     shape = trackShape,
-                    config = config.asControlSurface().copy(shadowElevation = 0.dp)
+                    config = config.asTrackSurface(enabled)
                 )
                 .then(
                     if (enabled) {
@@ -301,6 +300,7 @@ fun GlassSlider(
                             detectTapGestures { offset ->
                                 val newFraction = offset.x / size.width.toFloat()
                                 updateValueFromFraction(newFraction)
+                                onValueChangeFinished?.invoke()
                             }
                         }
                     } else {
@@ -325,11 +325,21 @@ fun GlassSlider(
                     if (enabled) {
                         Modifier.pointerInput(Unit) {
                             detectHorizontalDragGestures(
-                                onDragStart = { dragOffset = 0f },
+                                onDragStart = {
+                                    dragOffset = 0f
+                                    // 每次拖動都從「當下」的位置起算。這個 lambda 只在
+                                    // pointerInput 的 key 變動時重建，直接讀外層的
+                                    // fraction 會一路用著首次組合時的值——第二次拖會跳
+                                    // 回起點。
+                                    dragStartFraction = latestFraction
+                                },
+                                onDragEnd = { onValueChangeFinished?.invoke() },
+                                onDragCancel = { onValueChangeFinished?.invoke() },
                                 onHorizontalDrag = { change, dragAmount ->
                                     change.consume()
                                     dragOffset += dragAmount
-                                    val newFraction = fraction + dragOffset / trackWidth.toPx()
+                                    val newFraction =
+                                        dragStartFraction + dragOffset / trackWidth.toPx()
                                     updateValueFromFraction(newFraction)
                                 }
                             )

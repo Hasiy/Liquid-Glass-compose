@@ -64,6 +64,9 @@ fun GlassThemeSpec.toGlassConfig(): GlassConfig {
         pageBackgroundTop = backgroundTop.toComposeColor(),
         pageBackgroundBottom = backgroundBottom.toComposeColor(),
         native = visualStyle == GlassVisualStyle.NATIVE,
+        // 渲染器要知道自己在哪一套風格底下：Digital 的七段數字、Tactile 的凸起膠帽
+        // 不是換個顏色就能得到的，得靠這個分派
+        visualStyle = visualStyle,
     )
 }
 

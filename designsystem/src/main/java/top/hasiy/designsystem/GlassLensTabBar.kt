@@ -68,8 +68,36 @@ object GlassLensTabBarDefaults {
     val LensOverflow = 8.dp
     val LensRimWidth = 0.75.dp
     const val LENS_RIM_ALPHA = 0.58f
-    val ContainerBorderColor = Color(0xFFC9CBCE)
-    val ContentColor = Color(0xFFF6F7F8)
+
+    /**
+     * 鏡片邊緣的色散光譜。
+     *
+     * **這個不跟主題走。** 色散是玻璃的物理屬性——白光穿過鏡片邊緣被分成彩虹色，
+     * 跟房間刷什麼顏色無關。而且軌道邊界刻意用中性色就是為了跟這圈彩邊區分，
+     * 若兩者都接主題色會糊在一起。要換材質請覆蓋這個值，不要改成主題色。
+     */
+    val RimSpectrum = listOf(
+        Color(0xFF77E5FF),
+        Color(0xFF2E9FFF),
+        Color(0xFFDD8EFF),
+        Color(0xFFF0DA57),
+        Color(0xFF6BE7D2),
+    )
+
+    /** 軌道邊界在深色表面上的漸層透明度（上緣→下緣） */
+    const val RIM_ALPHA_TOP_ON_DARK = 0.82f
+    const val RIM_ALPHA_BOTTOM_ON_DARK = 0.36f
+
+    /**
+     * 淺色表面上的軌道邊界透明度。
+     *
+     * 淺色主題的邊界色是黑的，沿用深色那組 0.82/0.36 會在淺灰屏底上壓出一圈粗黑框。
+     */
+    const val RIM_ALPHA_TOP_ON_LIGHT = 0.22f
+    const val RIM_ALPHA_BOTTOM_ON_LIGHT = 0.09f
+
+    /** 鏡片上緣那道極淡反光的濃度 */
+    const val LENS_SHEEN_ALPHA = 0.10f
 }
 
 /** 返回鏡片中心所在的視覺槽位，支援 RTL。 */
@@ -105,7 +133,8 @@ private fun slotCenterFraction(slot: Int, slotCount: Int, isRtl: Boolean): Float
  * @param onCenterActionClick 中央操作點擊回呼
  * @param centerActionDescription 中央操作的無障礙名稱
  * @param lensEnabled 是否開啟鏡片內容放大；關閉時只顯示原始內容與透明軌道輪廓
- * @param contentColor 圖示與文字顏色，不改變鏡片亮面材質
+ * @param config 玻璃主題參數，決定軌道邊界與反光的方向（深色表面往白、淺色往黑）
+ * @param contentColor 圖示與文字顏色，不改變鏡片亮面材質；預設取自 [config]
  */
 @Composable
 fun GlassLensTabBar(
@@ -118,10 +147,22 @@ fun GlassLensTabBar(
     onCenterActionClick: () -> Unit = {},
     centerActionDescription: String? = null,
     lensEnabled: Boolean = true,
-    contentColor: Color = GlassLensTabBarDefaults.ContentColor,
+    config: GlassConfig = LocalGlassConfig.current,
+    contentColor: Color = config.screenContentColor,
 ) {
     if (items.isEmpty()) return
     val hasCenter = centerAction != null
+    // 軌道邊界的濃度依表面明暗分開：淺色主題的邊是黑的，沿用深色那組會壓出粗黑框
+    val rimAlphaTop = if (config.isLightSurface) {
+        GlassLensTabBarDefaults.RIM_ALPHA_TOP_ON_LIGHT
+    } else {
+        GlassLensTabBarDefaults.RIM_ALPHA_TOP_ON_DARK
+    }
+    val rimAlphaBottom = if (config.isLightSurface) {
+        GlassLensTabBarDefaults.RIM_ALPHA_BOTTOM_ON_LIGHT
+    } else {
+        GlassLensTabBarDefaults.RIM_ALPHA_BOTTOM_ON_DARK
+    }
     val slotCount = items.size + if (hasCenter) 1 else 0
     val centerSlot = items.size / 2
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -245,11 +286,17 @@ fun GlassLensTabBar(
                         }
                     }
                     // 鏡片本體不加濾色：內容保持原始顏色，視覺差異只來自局部放大。
-                    // 這一道極淡白色反光只用來定義玻璃上緣，不改變內容色調。
+                    // 這一道極淡反光只用來定義玻璃上緣，不改變內容色調；
+                    // 顏色跟著表面明暗走，淺色主題用白反光是看不見的。
                     drawPath(
                         lensPath,
                         Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                            listOf(
+                                config.highlightColor.copy(
+                                    alpha = GlassLensTabBarDefaults.LENS_SHEEN_ALPHA
+                                ),
+                                Color.Transparent,
+                            ),
                             startY = lensTop,
                             endY = lensTop + lensHeight * 0.46f,
                         ),
@@ -257,13 +304,7 @@ fun GlassLensTabBar(
                     drawPath(
                         lensPath,
                         Brush.linearGradient(
-                            listOf(
-                                Color(0xFF77E5FF),
-                                Color(0xFF2E9FFF),
-                                Color(0xFFDD8EFF),
-                                Color(0xFFF0DA57),
-                                Color(0xFF6BE7D2),
-                            ),
+                            GlassLensTabBarDefaults.RimSpectrum,
                             start = Offset(centerX - lensWidth / 2f, 0f),
                             end = Offset(centerX + lensWidth / 2f, size.height),
                         ),
@@ -271,13 +312,14 @@ fun GlassLensTabBar(
                         alpha = GlassLensTabBarDefaults.LENS_RIM_ALPHA,
                     )
                 }
-                // 軌道邊界使用中性白，不與鏡片彩邊混在一起。
+                // 軌道邊界使用中性色，不與鏡片彩邊混在一起——彩邊是色散，
+                // 這裡再上主題色兩者會糊成一團。方向跟著表面明暗走。
                 drawPath(
                     barPath,
                     Brush.verticalGradient(
                         listOf(
-                            GlassLensTabBarDefaults.ContainerBorderColor.copy(alpha = 0.82f),
-                            GlassLensTabBarDefaults.ContainerBorderColor.copy(alpha = 0.36f),
+                            config.borderColor.copy(alpha = rimAlphaTop),
+                            config.borderColor.copy(alpha = rimAlphaBottom),
                         )
                     ),
                     style = Stroke(1.dp.toPx()),

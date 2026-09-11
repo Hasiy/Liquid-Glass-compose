@@ -255,8 +255,8 @@ fun GlassDockedSearchBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 52.dp)
-                        .glassOverlayBackdrop(shape = RoundedCornerShape(16.dp), config = config)
-                        .glassSurface(shape = RoundedCornerShape(16.dp), config = config),
+                        .glassOverlayBackdrop(shape = RoundedCornerShape(16.dp), config = config.asOverlaySurface())
+                        .glassSurface(shape = RoundedCornerShape(16.dp), config = config.asOverlaySurface()),
                     color = Color.Transparent,
                     contentColor = contentColor,
                     shape = RoundedCornerShape(16.dp)
@@ -302,8 +302,8 @@ fun GlassDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier
-            .glassOverlayBackdrop(shape = RoundedCornerShape(12.dp), config = config)
-            .glassSurface(shape = RoundedCornerShape(12.dp), config = config),
+            .glassOverlayBackdrop(shape = RoundedCornerShape(12.dp), config = config.asOverlaySurface())
+            .glassSurface(shape = RoundedCornerShape(12.dp), config = config.asOverlaySurface()),
         shape = RoundedCornerShape(12.dp),
         containerColor = Color.Transparent,
         tonalElevation = 0.dp,
@@ -427,8 +427,8 @@ fun GlassTooltipBox(
         {
             Surface(
                 modifier = Modifier
-                    .glassOverlayBackdrop(shape = RoundedCornerShape(8.dp), config = config)
-                    .glassSurface(shape = RoundedCornerShape(8.dp), config = config),
+                    .glassOverlayBackdrop(shape = RoundedCornerShape(8.dp), config = config.asOverlaySurface())
+                    .glassSurface(shape = RoundedCornerShape(8.dp), config = config.asOverlaySurface()),
                 color = Color.Transparent,
                 contentColor = config.contentColor,
                 shape = RoundedCornerShape(8.dp)

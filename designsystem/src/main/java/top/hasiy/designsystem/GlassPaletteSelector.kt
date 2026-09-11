@@ -145,9 +145,15 @@ private fun PaletteOption(
  *
  * 文案由 SDK 自帶（與 [GlassThemeSelector] 的做法一致），使用端在自己的
  * `strings.xml` 定義同名資源即可覆蓋。
+ *
+ * 公開給使用端：自己做主題入口（選單、設定頁）時應該讀同一份文案，
+ * 在外面另抄一套的話兩邊遲早會不一致。
+ *
+ * @param id 主題標識
+ * @return 顯示名的字串資源 ID
  */
 @StringRes
-private fun paletteNameRes(id: ThemePaletteId): Int = when (id) {
+fun paletteNameRes(id: ThemePaletteId): Int = when (id) {
     ThemePaletteId.LIME -> R.string.glass_palette_lime
     ThemePaletteId.SKY -> R.string.glass_palette_sky
     ThemePaletteId.NORDIC -> R.string.glass_palette_nordic

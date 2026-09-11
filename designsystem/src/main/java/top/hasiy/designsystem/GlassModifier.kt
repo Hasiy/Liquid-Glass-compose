@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
@@ -300,12 +301,15 @@ fun Modifier.glassSurface(
                 directionalEffectScale
             )
 
-            // 玻璃基底：半透明白垂直漸層（頂亮 → 底聚光）
+            // 玻璃基底：垂直漸層（頂亮 → 底聚光）。
+            // 終點色未指定時與起點同色，退化成原本的「同色不同透明度」；
+            // 填充段會指定它，做出 accentLight → accent 的雙色漸層。
+            val bodyEndColor = config.bodyEndColor.takeOrElse { config.baseColor }
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0f to config.baseColor.copy(alpha = resolvedBodyTopAlpha),
-                        1f to config.baseColor.copy(alpha = resolvedBodyBottomAlpha)
+                        1f to bodyEndColor.copy(alpha = resolvedBodyBottomAlpha)
                     )
                 ),
                 topLeft = Offset.Zero,

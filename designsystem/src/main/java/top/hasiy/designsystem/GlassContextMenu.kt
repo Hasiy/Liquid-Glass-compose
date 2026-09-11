@@ -86,8 +86,8 @@ fun GlassContextMenuArea(
                 Modifier
             } else {
                 Modifier
-                    .glassOverlayBackdrop(shape = CONTEXT_MENU_SHAPE, config = config)
-                    .glassSurface(shape = CONTEXT_MENU_SHAPE, config = config)
+                    .glassOverlayBackdrop(shape = CONTEXT_MENU_SHAPE, config = config.asOverlaySurface())
+                    .glassSurface(shape = CONTEXT_MENU_SHAPE, config = config.asOverlaySurface())
             }
             Surface(
                 modifier = menuModifier,

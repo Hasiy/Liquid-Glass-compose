@@ -1,8 +1,10 @@
 package top.hasiy.designsystem
 
+import top.hasiy.designsystem.tokens.GlassVisualStyle
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -13,7 +15,10 @@ import androidx.compose.ui.unit.dp
  * 將「玻璃基底漸層、左上柔光、邊緣描邊、接觸陰影、文字顏色」抽象成一組可設定的參數，
  * 任何 Button / Card / Box 都可透過 [Modifier.glassSurface] 套用，並可隨時切換不同預設主題。
  *
- * @param baseColor 玻璃基底主色（半透明，透出底層背景）
+ * @param baseColor 玻璃基底主色（半透明，透出底層背景）。單色時它就是整片基底；
+ *   指定 [bodyEndColor] 後它是垂直漸層的**起點**（上緣）
+ * @param bodyEndColor 基底垂直漸層的終點色（下緣）。預設未指定＝與 [baseColor] 同色，
+ *   基底退化成原本「同色不同透明度」的漸層。填充段用它做 accentLight → accent
  * @param bodyTopAlpha 基底頂部透明度（0.0~1.0）
  * @param bodyBottomAlpha 基底底部透明度（0.0~1.0）
  * @param highlightInnerAlpha 柔光內圈透明度（0.0~1.0），越高玻璃上緣反光越明顯
@@ -59,6 +64,7 @@ import androidx.compose.ui.unit.dp
 @Stable
 data class GlassConfig(
     val baseColor: Color = Color(0xFF9A9AA8),
+    val bodyEndColor: Color = Color.Unspecified,
     val bodyTopAlpha: Float = 0.30f,
     val bodyBottomAlpha: Float = 0.32f,
     val highlightInnerAlpha: Float = 0.16f,
@@ -94,6 +100,7 @@ data class GlassConfig(
     val overlayBlurRadius: Dp = 24.dp,
     val overlayFallbackAlpha: Float = 0.62f,
     val native: Boolean = false,
+    val visualStyle: GlassVisualStyle = GlassVisualStyle.DROP,
 ) {
     companion object {
         /** 預設使用水滴變體 */
@@ -104,7 +111,7 @@ data class GlassConfig(
 /**
  * 填充段的配置：進度條的完成區、滑桿的已選區、音量條的已填區。
  *
- * 啟用強調色時是一塊實心的 [GlassConfig.accentColor]；否則沿用玻璃質感，並依表面明暗
+ * 啟用強調色時是 `accentLight → accent` 的垂直漸層；否則沿用玻璃質感，並依表面明暗
  * 選擇對比方向——深色表面往白提亮、淺色表面往黑壓暗。原本一律往白提亮，在淺色主題上
  * 會變成白壓白而看不見填充。
  *
@@ -112,7 +119,11 @@ data class GlassConfig(
  */
 fun GlassConfig.asFillSurface(enabled: Boolean = true): GlassConfig = if (accentEnabled) {
     copy(
-        baseColor = accentColor,
+        // accentLight → accent 的垂直漸層，與參考稿的 slider-fill 同方向（上淺下深）。
+        // palette 沒給 accentLight 時 accentLightColor 會回退到 accentColor，
+        // 兩端同色即退化成原本的實色填充，舊有預設的觀感不變。
+        baseColor = accentLightColor,
+        bodyEndColor = accentColor,
         bodyTopAlpha = if (enabled) 0.95f else 0.30f,
         bodyBottomAlpha = if (enabled) 0.90f else 0.28f,
         // 實色段再疊柔光只會顯髒
@@ -147,11 +158,80 @@ fun GlassConfig.asFillSurface(enabled: Boolean = true): GlassConfig = if (accent
 }
 
 /**
+ * 浮層的表面配置：Dialog、Popup、BottomSheet、Drawer、Snackbar、選單。
+ *
+ * 主題有給對應 token 時用它，沒給時原樣回傳（舊有的四組 SDK 預設沒有這兩個 token，
+ * 浮層沿用玻璃基底色）。token 自帶 alpha——參考稿的浮層是
+ * `rgba(29,33,33,.97)` 這種接近實色的底，不是半透明玻璃——所以要把 alpha
+ * 一併帶進 body，否則 [Modifier.glassSurface] 會用 bodyTopAlpha 把它蓋掉。
+ *
+ * 柔光、描邊與陰影保留：浮層仍然要浮在內容之上，這些是它的輪廓來源。
+ *
+ * @param deep 是否為更深一階的浮層。抽屜與對話框用 `true`（`glassDeep`）；
+ *   Toast、Popup、選單這類輕量浮層用 `false`（`glass`）
+ */
+fun GlassConfig.asOverlaySurface(deep: Boolean = false): GlassConfig {
+    val token = if (deep) palette.glassDeep else palette.glass
+    if (!token.isSpecified) return this
+    return copy(
+        baseColor = token,
+        bodyTopAlpha = token.alpha,
+        bodyBottomAlpha = token.alpha,
+        // 浮層底實際上是 glassBackdrop 畫的，它用的是 overlayFallbackAlpha
+        // 而不是 body 那組，兩邊都要帶上 token 的 alpha 才會一致
+        overlayFallbackAlpha = token.alpha,
+    )
+}
+
+/**
+ * 軌道的表面配置：進度條未完成區、滑桿未選區、音量條未填區。
+ *
+ * 主題有給 `track` 時用它的實色——參考稿的軌道就是一塊實色襯底（深色主題
+ * `#303536`、Nordic `#B0B0B0`），不是半透明玻璃。沒給時沿用 [asControlSurface]：
+ * 舊有的四組 SDK 預設沒有 track token，不能因為接了新語意就改掉它們的觀感。
+ *
+ * 軌道是襯底，柔光與描邊一律關掉——疊在上面只會讓填充段的邊界糊掉。
+ *
+ * @param enabled 元件是否可用；false 時整段以較低不透明度呈現
+ */
+fun GlassConfig.asTrackSurface(enabled: Boolean = true): GlassConfig =
+    if (palette.track.isSpecified) {
+        copy(
+            baseColor = trackColor,
+            bodyTopAlpha = if (enabled) 1f else TRACK_DISABLED_ALPHA,
+            bodyBottomAlpha = if (enabled) 1f else TRACK_DISABLED_ALPHA,
+            highlightInnerAlpha = 0f,
+            highlightOuterAlpha = 0f,
+            touchSpotPeakAlpha = 0f,
+            borderTopAlpha = 0f,
+            borderBottomAlpha = 0f,
+            innerShadowAlpha = 0f,
+            shadowElevation = 0.dp,
+        )
+    } else {
+        asControlSurface().copy(shadowElevation = 0.dp)
+    }
+
+/** 軌道在停用狀態下的不透明度 */
+private const val TRACK_DISABLED_ALPHA = 0.4f
+
+/**
  * 選中態的表面配置：導航項、Chip、開關軌道等「被選上」的元件。
  *
  * 啟用強調色時是強調色的淡底加同色描邊；否則沿用玻璃質感，並依表面明暗選擇方向——
  * 深色表面把玻璃調亮，淺色表面把玻璃壓暗。原本一律調亮，在淺色主題的近白表面上
  * 沒有提亮空間，選中與否會看不出差別。
+ *
+ * ## 前景色
+ *
+ * 回傳的 [GlassConfig.contentColor] 已經跟著底色調好，呼叫端直接讀它就行，
+ * 不要各自判斷。兩種底需要的前景色不同：
+ *
+ * - `strong = true` 是接近實色的強調色底，字與圖示要用 `onAccent`。
+ *   寫死白色會在亮色強調上消失——Lime 的 `#DFFF32` 配白勾等於沒有勾。
+ * - `strong = false` 只有 22% 淡底，透出來的還是原表面色，用 `accentDeep`。
+ *   深色主題下它等於 `accent`，只有淺色主題會加深；Nordic 的 `#079D68`
+ *   壓在 `#D1D1D1` 上只有 2.3:1，換成 `accentDeep` 的 `#0A6D4B` 才拉到 3.8:1。
  *
  * @param strong 是否要更強的對比（例如開關軌道），false 時只做輕微標示（例如導航項）
  */
@@ -167,6 +247,7 @@ fun GlassConfig.asSelectedSurface(strong: Boolean = false): GlassConfig = if (ac
         borderTopAlpha = if (strong) 0.35f else 0.42f,
         borderBottomAlpha = if (strong) 0.15f else 0.25f,
         shadowElevation = 0.dp,
+        contentColor = if (strong) onAccentColor else accentDeepColor,
     )
 } else if (isLightSurface) {
     copy(

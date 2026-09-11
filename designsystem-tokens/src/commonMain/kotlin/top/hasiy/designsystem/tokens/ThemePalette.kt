@@ -65,6 +65,13 @@ enum class ThemePaletteId(val id: String) {
  * @param accentLight 强调色的浅色变体，用于填充段由浅到深的渐层起点。
  * @param accentDeep 强调色的加深变体，用于压在浅底上的小字（连接状态、Live 标签）。
  *   深色主题下与 [accent] 同值。
+ * @param quietAccent 辅助微文字要不要退出强调色。指标卡的 ±、量程旁的 STEP、
+ *   抽屉里的「已在别处」这类说明字，在深色屏上用强调色是点缀，换到浅色屏上就变成
+ *   一路绿到底、而且小字对比度不够（Nordic 的 `#079D68` 压在近白面板上只有 3:1，
+ *   小字不过 AA）。配色可以在这里给一个中性色让它们整批降下来；
+ *   留 `0L`（未指定）表示不降，仍走 [accent]。
+ *   注意这只管**装饰性小字**，语义色块不受影响：CTA、选中态、当前调节项、
+ *   连接与录制状态仍然是 [accent] / [accentDeep]。
  * @param onAccent 压在 [accent] 上的文字色，必须随主题走：配黄绿的暗黄留在蓝底上会显脏。
  * @param ambient 环境光色，用于页面背景的第二个径向渐层。
  * @param track 轨道色：仪表环未到达的量程、滑杆未填充段。
@@ -80,6 +87,7 @@ enum class ThemePaletteId(val id: String) {
  * @param sunk 比 [panel] 压暗一阶的表面，用于底部 dock 与内凹容器。
  * @param glass 浮层表面色（调节浮层、Toast），含 alpha。
  * @param glassDeep 更深一阶的浮层表面色（抽屉、对话框），含 alpha。
+ * @param sheen 凸起表面的受光高光色。见 [SurfaceSet.sheen]。
  */
 data class ThemePalette(
     val id: ThemePaletteId,
@@ -88,6 +96,7 @@ data class ThemePalette(
     val accent: Long,
     val accentLight: Long,
     val accentDeep: Long,
+    val quietAccent: Long = 0L,
     val onAccent: Long,
     val ambient: Long,
     val track: Long,
@@ -103,6 +112,7 @@ data class ThemePalette(
     val sunk: Long,
     val glass: Long,
     val glassDeep: Long,
+    val sheen: Long = 0L,
 ) {
     /**
      * 画布是不是浅色的。
@@ -151,144 +161,40 @@ data class ThemePalette(
         private const val GAMMA_DIVISOR = 1.055f
         private const val GAMMA_EXPONENT = 2.4f
 
-        // ---------- 深色玻璃主题共用的结构性表面色 ----------
-        // 参考稿的 5 组深色主题（Lime / Sky / Ocean / Ember / Aurora）只换强调色系，
-        // 屏底、面板与浮层这些结构色一律沿用基准值。
-        private const val DARK_TRACK = 0xFF303536L
-        private const val DARK_DANGER = 0xFFFF6969L
-        private const val DARK_BACKGROUND = 0xFFEDF0E9L
-        private const val DARK_SCREEN = 0xFF070909L
-        private const val DARK_PANEL = 0xFF171B1CL
+        // ---------- 六组主题色 ----------
+        // 六组走的是**同一条组装路径**：都由 [palette] 把一组强调色 [AccentSet] 和
+        // 所属色系的表面色 [SurfaceSet] 拼起来，差异全部落在 `PaletteTokens` 里的色值。
+        // 想加一组新配色，在那个文件里补一个 AccentSet、在这里加一行即可，不必动实现。
 
-        /** rgba(255,255,255,.09) */
-        private const val DARK_LINE = 0x17FFFFFFL
-        private const val DARK_MUTED = 0xFF818A85L
-        private const val DARK_INK = 0xFF0B0E0DL
-        private const val DARK_SCREEN_CONTENT = 0xFFF7F9F6L
-        private const val DARK_LIFT = 0xFF1D2121L
-        private const val DARK_SUNK = 0xFF151919L
+        /** 荧光绿。 */
+        val Lime: ThemePalette = darkPalette(ThemePaletteId.LIME, PaletteTokens.Lime)
 
-        /** rgba(29,33,33,.97) */
-        private const val DARK_GLASS = 0xF71D2121L
-        private const val DARK_GLASS_DEEP = 0xFF161A19L
+        /** 品牌天蓝。 */
+        val Sky: ThemePalette = darkPalette(ThemePaletteId.SKY, PaletteTokens.Sky)
 
-        /** 荧光绿：参考稿的基准主题，其余深色主题以此为底只换强调色系。 */
-        val Lime: ThemePalette = darkPalette(
-            id = ThemePaletteId.LIME,
-            accent = 0xFFDFFF32L,
-            accentLight = 0xFFEFFF9AL,
-            onAccent = 0xFF151800L,
-            ambient = 0xFF69E2CEL,
-        )
+        /** 北欧雾绿。白色系。 */
+        val Nordic: ThemePalette = lightPalette(ThemePaletteId.NORDIC, PaletteTokens.Nordic)
 
-        /**
-         * 品牌天蓝。
-         *
-         * 基准品牌色 #2B7FD4 在深色屏上只有 4.8:1，小字发闷，
-         * 因此取深色场景的提亮版 #5AA9EE（7.9:1）。
-         */
-        val Sky: ThemePalette = darkPalette(
-            id = ThemePaletteId.SKY,
-            accent = 0xFF5AA9EEL,
-            accentLight = 0xFFC4E2FBL,
-            onAccent = 0xFF06202FL,
-            ambient = 0xFF6FD3E8L,
-        )
-
-        /** 冰川蓝。 */
-        val Ocean: ThemePalette = darkPalette(
-            id = ThemePaletteId.OCEAN,
-            accent = 0xFF43D9FFL,
-            accentLight = 0xFFB8F2FFL,
-            onAccent = 0xFF041E29L,
-            ambient = 0xFF5B7EFFL,
-        )
+        /** 冰川蓝。白色系。 */
+        val Ocean: ThemePalette = lightPalette(ThemePaletteId.OCEAN, PaletteTokens.Ocean)
 
         /** 熔岩橙。 */
-        val Ember: ThemePalette = darkPalette(
-            id = ThemePaletteId.EMBER,
-            accent = 0xFFFF9A3DL,
-            accentLight = 0xFFFFD0A3L,
-            onAccent = 0xFF2A1400L,
-            ambient = 0xFFFF635BL,
-        )
+        val Ember: ThemePalette = darkPalette(ThemePaletteId.EMBER, PaletteTokens.Ember)
 
         /** 极光紫。 */
-        val Aurora: ThemePalette = darkPalette(
-            id = ThemePaletteId.AURORA,
-            accent = 0xFFB78CFFL,
-            accentLight = 0xFFDECAFFL,
-            onAccent = 0xFF1A0F2EL,
-            ambient = 0xFF45E2BEL,
-        )
+        val Aurora: ThemePalette = darkPalette(ThemePaletteId.AURORA, PaletteTokens.Aurora)
 
-        /**
-         * 北欧雾绿：浅色中性轴 + 绿色语义强调。
-         *
-         * 灰阶一律不掺绿；绿只留给仪表、主 CTA、当前调节项和连接状态。
-         * 明度台阶：画布 #ABABAB → 屏底 #D1D1D1 → 面板 #E3E3E3 → 提亮 #F1F1F1。
-         */
-        val Nordic: ThemePalette = ThemePalette(
-            id = ThemePaletteId.NORDIC,
-            visualStyle = GlassVisualStyle.NEUTRAL,
-            isLight = true,
-            accent = 0xFF079D68L,
-            accentLight = 0xFF74D4ACL,
-            // 压白字的绿要够深：#0A6D4B 对白字 6.4:1，#087A55 只有 4.3:1，小字不过 AA。
-            accentDeep = 0xFF0A6D4BL,
-            onAccent = 0xFFFFFFFFL,
-            ambient = 0xFF72C7A9L,
-            track = 0xFFB0B0B0L,
-            danger = 0xFFBD4545L,
-            background = 0xFFABABABL,
-            screen = 0xFFD1D1D1L,
-            panel = 0xFFE3E3E3L,
-            // rgba(13,13,13,.08)
-            line = 0x140D0D0DL,
-            muted = 0xFF545454L,
-            ink = 0xFF0D0D0DL,
-            screenContent = 0xFF0D0D0DL,
-            lift = 0xFFF1F1F1L,
-            sunk = 0xFFC9C9C9L,
-            // rgba(238,238,238,.72)
-            glass = 0xB8EEEEEEL,
-            // rgba(232,232,232,.8)
-            glassDeep = 0xCCE8E8E8L,
-        )
+        // ---------- 两套自带材质的风格 ----------
+        // 这两组换掉的不只是配色，还有整套材质，所以各自带一份表面色。
+        // 组装仍然走同一个 [palette]，只是不共用色系的表面。
 
-        /**
-         * 数码白：浅色数字仪表风格。
-         *
-         * 仪表环换成点环，因此 [track] 取点环未到达色 #D7DAD7 而不是深色主题的深灰轨道
-         * ——参考稿没有覆盖 `--track`，级联下来的深灰在这套浅色仪表里不会出现。
-         */
-        val Digital: ThemePalette = ThemePalette(
+        /** 数码白：浅色数字仪表风格。 */
+        val Digital: ThemePalette = palette(
             id = ThemePaletteId.DIGITAL,
             visualStyle = GlassVisualStyle.DIGITAL,
             isLight = true,
-            accent = 0xFFFF3B30L,
-            accentLight = 0xFFFFB8B2L,
-            accentDeep = 0xFFFF3B30L,
-            onAccent = 0xFFFFFFFFL,
-            ambient = 0xFF4A9B63L,
-            track = 0xFFD7DAD7L,
-            danger = 0xFFFF3B30L,
-            background = 0xFFE7E9E7L,
-            screen = 0xFFF4F5F2L,
-            panel = 0xFFE9ECE9L,
-            // rgba(12,17,15,.14)
-            line = 0x240C110FL,
-            muted = 0xFF737A77L,
-            ink = 0xFF111514L,
-            screenContent = 0xFF111514L,
-            // rgba(235,238,234,.86)
-            lift = 0xDBEBEEEAL,
-            // rgba(228,232,228,.94)
-            sunk = 0xF0E4E8E4L,
-            // rgba(244,246,243,.98)
-            glass = 0xFAF4F6F3L,
-            // rgba(229,233,229,.8)
-            glassDeep = 0xCCE5E9E5L,
+            accents = PaletteTokens.Digital,
+            surfaces = PaletteTokens.DigitalSurfaces,
         )
 
         /**
@@ -296,29 +202,12 @@ data class ThemePalette(
          *
          * 画布是浅色塑胶质感，但屏内是深色，因此 [isLight] 为 false。
          */
-        val Tactile: ThemePalette = ThemePalette(
+        val Tactile: ThemePalette = palette(
             id = ThemePaletteId.TACTILE,
             visualStyle = GlassVisualStyle.TACTILE,
             isLight = false,
-            accent = 0xFF10E66BL,
-            accentLight = 0xFF9DFFC5L,
-            accentDeep = 0xFF10E66BL,
-            onAccent = 0xFF05200FL,
-            ambient = 0xFF10E66BL,
-            track = 0xFF4A4D4BL,
-            danger = 0xFFFF6D70L,
-            background = 0xFFDEDFDDL,
-            screen = 0xFF191A1BL,
-            panel = 0xFF2A2B2CL,
-            // rgba(255,255,255,.12)
-            line = 0x1FFFFFFFL,
-            muted = 0xFF999D9BL,
-            ink = 0xFF151716L,
-            screenContent = 0xFFF0F1EEL,
-            lift = 0xFF3B3C3DL,
-            sunk = 0xFF1B1C1DL,
-            glass = 0xFF363839L,
-            glassDeep = 0xFF1C1D1EL,
+            accents = PaletteTokens.Tactile,
+            surfaces = PaletteTokens.TactileSurfaces,
         )
 
         /** 全部 8 组主题色，顺序与参考稿的主题切换器一致。 */
@@ -344,39 +233,69 @@ data class ThemePalette(
         fun of(id: ThemePaletteId): ThemePalette = All.first { it.id == id }
 
         /**
-         * 构造一组深色玻璃主题：只换强调色系，结构性表面色沿用基准值。
+         * 黑色系：荧光绿、品牌天蓝、熔岩橙、极光紫。
          *
-         * 深色底上强调色本身就够亮，[ThemePalette.accentDeep] 与 [accent] 同值——
-         * 只有压在浅底上的小字才需要加深变体。
+         * 深色底上强调色本身就够亮，加深变体与降调色都用不上，留给 [AccentSet] 的默认值。
          */
-        private fun darkPalette(
-            id: ThemePaletteId,
-            accent: Long,
-            accentLight: Long,
-            onAccent: Long,
-            ambient: Long,
-        ): ThemePalette = ThemePalette(
+        private fun darkPalette(id: ThemePaletteId, accents: AccentSet): ThemePalette = palette(
             id = id,
             visualStyle = GlassVisualStyle.DROP,
             isLight = false,
-            accent = accent,
-            accentLight = accentLight,
-            accentDeep = accent,
-            onAccent = onAccent,
-            ambient = ambient,
-            track = DARK_TRACK,
-            danger = DARK_DANGER,
-            background = DARK_BACKGROUND,
-            screen = DARK_SCREEN,
-            panel = DARK_PANEL,
-            line = DARK_LINE,
-            muted = DARK_MUTED,
-            ink = DARK_INK,
-            screenContent = DARK_SCREEN_CONTENT,
-            lift = DARK_LIFT,
-            sunk = DARK_SUNK,
-            glass = DARK_GLASS,
-            glassDeep = DARK_GLASS_DEEP,
+            accents = accents,
+            surfaces = PaletteTokens.Dark,
+        )
+
+        /** 白色系：北欧雾绿、冰川蓝。 */
+        private fun lightPalette(id: ThemePaletteId, accents: AccentSet): ThemePalette = palette(
+            id = id,
+            visualStyle = GlassVisualStyle.NEUTRAL,
+            isLight = true,
+            accents = accents,
+            surfaces = PaletteTokens.Light,
+        )
+
+        /**
+         * 把一组强调色和一组表面色拼成主题色。
+         *
+         * 所有主题都走这里，没有第二条路径——某一组「长得不一样」只能是色值不一样。
+         *
+         * @param id 稳定主题标识
+         * @param visualStyle 这组配色默认搭配的玻璃视觉结构
+         * @param isLight 屏内表面是否为浅色语义
+         * @param accents 强调色
+         * @param surfaces 表面色
+         */
+        private fun palette(
+            id: ThemePaletteId,
+            visualStyle: GlassVisualStyle,
+            isLight: Boolean,
+            accents: AccentSet,
+            surfaces: SurfaceSet,
+        ): ThemePalette = ThemePalette(
+            id = id,
+            visualStyle = visualStyle,
+            isLight = isLight,
+            accent = accents.accent,
+            accentLight = accents.accentLight,
+            // 没给加深变体就用主色本身：深色底上两者本来就是同一个值
+            accentDeep = accents.accentDeep.takeIf { it != 0L } ?: accents.accent,
+            quietAccent = accents.quietAccent,
+            onAccent = accents.onAccent,
+            ambient = accents.ambient,
+            track = surfaces.track,
+            danger = surfaces.danger,
+            background = surfaces.background,
+            screen = surfaces.screen,
+            panel = surfaces.panel,
+            line = surfaces.line,
+            muted = surfaces.muted,
+            ink = surfaces.ink,
+            screenContent = surfaces.screenContent,
+            lift = surfaces.lift,
+            sunk = surfaces.sunk,
+            glass = surfaces.glass,
+            glassDeep = surfaces.glassDeep,
+            sheen = surfaces.sheen,
         )
     }
 }

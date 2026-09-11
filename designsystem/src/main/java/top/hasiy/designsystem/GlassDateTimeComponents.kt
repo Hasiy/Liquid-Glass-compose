@@ -50,8 +50,8 @@ fun GlassDatePickerDialog(
             modifier = modifier
                 .padding(20.dp)
                 .widthIn(max = 520.dp)
-                .glassOverlayBackdrop(shape = pickerShape, config = config),
-            config = config,
+                .glassOverlayBackdrop(shape = pickerShape, config = config.asOverlaySurface(deep = true)),
+            config = config.asOverlaySurface(deep = true),
             shape = pickerShape,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -100,8 +100,8 @@ fun GlassTimePickerDialog(
             modifier = modifier
                 .padding(20.dp)
                 .widthIn(max = 420.dp)
-                .glassOverlayBackdrop(shape = pickerShape, config = config),
-            config = config,
+                .glassOverlayBackdrop(shape = pickerShape, config = config.asOverlaySurface(deep = true)),
+            config = config.asOverlaySurface(deep = true),
             shape = pickerShape,
         ) {
             Column(
