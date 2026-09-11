@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.fillMaxWidth
 import top.hasiy.designsystem.GlassConfig
 import top.hasiy.designsystem.GlassLensTabBar
+import top.hasiy.designsystem.LocalGlassConfig
 import top.hasiy.designsystem.GlassLensTabItem
 
 /** 舊 Demo 呼叫端的型別相容入口，實作位於 SDK。 */
@@ -146,7 +147,7 @@ fun DynamicLightTabBar(
         onCenterActionClick = { onCenterActionClick?.invoke() },
         centerActionDescription = centerActionDescription,
         lensEnabled = lensRefractionEnabled,
-        contentColor = pillGlassConfig?.contentColor
-            ?: top.hasiy.designsystem.GlassLensTabBarDefaults.ContentColor,
+        // 傳 config 就好：contentColor 會從它取，軌道邊界與反光也跟著表面明暗走
+        config = pillGlassConfig ?: LocalGlassConfig.current,
     )
 }

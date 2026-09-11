@@ -23,6 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,8 +39,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.hasiy.designsystem.DesignSystemTheme
+import top.hasiy.designsystem.GlassCheckbox
 import top.hasiy.designsystem.GlassConfig
+import top.hasiy.designsystem.GlassFilterChip
 import top.hasiy.designsystem.GlassPaletteSelector
+import top.hasiy.designsystem.GlassProgressBar
+import top.hasiy.designsystem.GlassRadioButton
+import top.hasiy.designsystem.GlassSlider
+import top.hasiy.designsystem.GlassSwitch
 import top.hasiy.designsystem.LocalGlassConfig
 import top.hasiy.designsystem.accentDeepColor
 import top.hasiy.designsystem.accentLightColor
@@ -105,6 +116,7 @@ fun ThemePalettePreviewScreen(
                 verticalArrangement = Arrangement.spacedBy(SECTION_GAP),
             ) {
                 SemanticShowcase(config = config)
+                ComponentShowcase(config = config)
                 TokenSwatches(config = config)
                 Spacer(Modifier.height(PAGE_PADDING))
             }
@@ -232,6 +244,71 @@ private fun StatusChip(text: String, textColor: Color, backgroundColor: Color) {
             .background(backgroundColor)
             .padding(horizontal = CHIP_PADDING_H, vertical = CHIP_PADDING_V),
     )
+}
+
+/**
+ * SDK 元件在這組配色下的樣子：選中態與軌道。
+ *
+ * 這一區存在的理由是元件目錄頁用的是四組 SDK 預設（palette 為 Unspecified，
+ * 語意色都會回退到舊值），看不出 8 組配色的差別。要驗收
+ * accent / onAccent / accentDeep / track 有沒有接對，只能在這裡看——
+ * 尤其 Lime 這種亮色強調，白色前景會直接消失。
+ *
+ * 進度條與滑桿必須用 SDK 元件，不能用手繪的 Box：軌道色走的是
+ * GlassConfig.asTrackSurface，手繪的看不出它有沒有生效。
+ */
+@Composable
+private fun ComponentShowcase(config: GlassConfig) {
+    var checked by remember { mutableStateOf(true) }
+    var selected by remember { mutableStateOf(true) }
+    var switched by remember { mutableStateOf(true) }
+    var chipSelected by remember { mutableStateOf(true) }
+    var sliderValue by remember { mutableFloatStateOf(PROGRESS_FRACTION) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CARD_CORNER))
+            .background(config.screenColor)
+            .padding(CARD_PADDING),
+        verticalArrangement = Arrangement.spacedBy(ROW_GAP),
+    ) {
+        SectionLabel(
+            text = stringResource(R.string.palette_preview_selection),
+            color = config.screenContentColor,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(SELECTION_GAP),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 每種元件都放選中與未選中各一個，方便直接對照
+            GlassCheckbox(checked = checked, onCheckedChange = { checked = it }, config = config)
+            GlassCheckbox(checked = false, onCheckedChange = {}, config = config)
+            GlassRadioButton(selected = selected, onClick = { selected = !selected }, config = config)
+            GlassRadioButton(selected = false, onClick = {}, config = config)
+            GlassSwitch(checked = switched, onCheckedChange = { switched = it }, config = config)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(SELECTION_GAP)) {
+            GlassFilterChip(
+                selected = chipSelected,
+                onClick = { chipSelected = !chipSelected },
+                label = stringResource(R.string.palette_preview_chip_selected),
+                config = config,
+            )
+            GlassFilterChip(
+                selected = false,
+                onClick = {},
+                label = stringResource(R.string.palette_preview_chip_unselected),
+                config = config,
+            )
+        }
+        // 軌道：填充段壓在 track 上，兩者撞色就會在這裡看出來
+        GlassProgressBar(progress = PROGRESS_FRACTION, config = config)
+        GlassSlider(
+            value = sliderValue,
+            onValueChange = { sliderValue = it },
+            config = config,
+        )
+    }
 }
 
 /** 每個 token 的實際色值，用來核對是否與設計稿一致。 */
@@ -379,6 +456,7 @@ private val PAGE_PADDING = 16.dp
 private val HEADER_PADDING = 4.dp
 private val SECTION_GAP = 14.dp
 private val ROW_GAP = 8.dp
+private val SELECTION_GAP = 14.dp
 private val CARD_CORNER = 20.dp
 private val CARD_PADDING = 14.dp
 private val CTA_HEIGHT = 44.dp

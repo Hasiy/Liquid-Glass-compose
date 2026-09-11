@@ -112,6 +112,9 @@ private const val GLOW_ALPHA_SCALE_LIGHT = 0.25f
  * @param onShadowEnabledChange 陰影開關回呼
  * @param onOpenTabShowcase 前往 Tab / Lens 同屏對照頁
  * @param onOpenPalettePreview 前往主題色驗收頁
+ * @param onOpenStateMatrix 前往響應式狀態矩陣頁
+ * @param onOpenDualGauge 前往雙表儀表舱（平板專屬顯示模式）
+ * @param onOpenRouteMap 前往路線與賽道地圖（平板專屬顯示模式）
  */
 @Composable
 fun DynamicLightTabBarDemoScreen(
@@ -122,6 +125,9 @@ fun DynamicLightTabBarDemoScreen(
     onShadowEnabledChange: (Boolean) -> Unit,
     onOpenTabShowcase: () -> Unit = {},
     onOpenPalettePreview: () -> Unit = {},
+    onOpenStateMatrix: () -> Unit = {},
+    onOpenDualGauge: () -> Unit = {},
+    onOpenRouteMap: () -> Unit = {},
 ) {
     val showCenterAction = LocalConfiguration.current.orientation != Configuration.ORIENTATION_PORTRAIT
     val glassTheme = uiState.glassTheme
@@ -360,6 +366,25 @@ fun DynamicLightTabBarDemoScreen(
                     onClick = onOpenPalettePreview,
                     config = glassTheme,
                 )
+                GlassButton(
+                    text = stringResource(R.string.matrix_open),
+                    onClick = onOpenStateMatrix,
+                    config = glassTheme,
+                )
+                // 兩種平板專屬的顯示模式。手機上不給入口：雙表要 800dp 以上的寬度、
+                // 路線地圖也得有橫向空間，塞進手機只能兩邊都縮成看不清。
+                if (LocalConfiguration.current.screenWidthDp >= TABLET_MIN_WIDTH_DP) {
+                    GlassButton(
+                        text = stringResource(R.string.cluster_open),
+                        onClick = onOpenDualGauge,
+                        config = glassTheme,
+                    )
+                    GlassButton(
+                        text = stringResource(R.string.route_open),
+                        onClick = onOpenRouteMap,
+                        config = glassTheme,
+                    )
+                }
                 Text(
                     text = stringResource(R.string.glass_theme_title),
                     color = glassTheme.contentColor,
@@ -756,3 +781,11 @@ private fun BoxScope.GlowBlob(
             )
     )
 }
+
+/**
+ * 平板的寬度門檻。
+ *
+ * 兩種專屬顯示模式都吃橫向空間：雙表舱是「兩塊表夾一塊會話區」，路線地圖要留出
+ * 地圖畫布。低於這個寬度就不給入口——縮著顯示不如不顯示。
+ */
+private const val TABLET_MIN_WIDTH_DP = 840

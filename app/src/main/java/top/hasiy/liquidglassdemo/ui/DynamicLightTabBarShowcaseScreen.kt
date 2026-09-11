@@ -219,7 +219,9 @@ fun DynamicLightTabBarShowcaseScreen(
                     centerActionSelected = lensCenterSelected,
                     onCenterActionClick = { lensCenterSelected = true },
                     centerActionDescription = stringResource(R.string.center_action_desc),
-                    contentColor = glassTheme.contentColor,
+                    // 這頁是淺底：一定要把 config 傳進去，否則軌道邊界會落到
+                    // LocalGlassConfig 的預設（深色表面）而畫成白邊，在白底上看不見
+                    config = glassTheme,
                     lensEnabled = refractionEnabled,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
