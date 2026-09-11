@@ -21,6 +21,7 @@
 - [使用约束（踩过的坑）](#使用约束踩过的坑)
 - [示例 app](#示例-app)
 - [构建与发布](#构建与发布)
+- [编译注意事项](#编译注意事项)
 - [相关文档](#相关文档)
 
 ---
@@ -363,10 +364,15 @@ SideEffect {
 ./gradlew :designsystem:publishReleasePublicationToMavenLocal
 ```
 
+## 编译注意事项
+
+Windows 下的推荐 JDK、Gradle `Selector.open()`/loopback 故障判断、多设备安装、非阻断警告及安装后验证命令，统一记录在 [BUILDING.md](BUILDING.md)。遇到 `Unable to establish loopback connection` 时，请先按该文档区分 Selector 初始化、AF_UNIX 与普通 loopback TCP，不要直接归因于防火墙。
+
 ---
 
 ## 相关文档
 
+- [BUILDING.md](BUILDING.md) — Windows 编译、APK 打包、真机安装与故障排查注意事项
 - [designsystem/README.md](designsystem/README.md) — SDK 的 API 说明与模糊契约（英文）
 - [design-system-architecture.md](design-system-architecture.md) — SDK 模块边界、主题模型、依赖方向与扩展约定
 - [neutral_theme_plan.md](neutral_theme_plan.md) — Neutral 浅色主题的完整改造方案与实施记录，包含每一轮调整的原因

@@ -111,7 +111,37 @@ TACTILE 是深色表面却用近黑描边——那是胶帽之间的机械切边
 两边各存一份的话，`copy(accentColor = ...)` 这个既有的覆写手段会被 palette 里的
 旧值悄悄盖掉。要连带换掉浅／深变体请用 `GlassConfig.withAccent(color)`。
 
-### 1.6 视觉结构与配色的组合
+### 1.6 对比度实测与已知偏差
+
+阶段 2 收尾时按 WCAG 2.1 实测了 8 组配色的关键前景／背景组合。**深色六组全部通过**，
+两个浅色主题有以下偏差：
+
+| 主题 | 组合 | 实测 | 要求 |
+|---|---|---|---|
+| Nordic | `onAccent` on `accent`（CTA 文字） | 3.48 | 4.5（大文字 3.0） |
+| Nordic | `accentDeep` on `screen`（连接状态） | 4.16 | 4.5 |
+| Nordic | `danger` on `screen` | 3.35 | 4.5 |
+| Nordic | `accent` vs `track`（填充段与轨道） | **1.61** | 3.0 |
+| Digital | `onAccent` on `accent`（CTA 文字） | 3.55 | 4.5（大文字 3.0） |
+| Digital | `accentDeep` on `screen` | 3.24 | 4.5 |
+| Digital | `muted` on `screen`（次级文字） | 4.02 | 4.5 |
+| Digital | `danger` on `screen` | 3.24 | 4.5 |
+| Digital | `accent` vs `track` | **2.52** | 3.0 |
+
+**这些是参考稿本身的取值，不是实现引入的**，因此按原值保留（决策于 2026-09-08）。
+CTA 那两项若按大文字标准（≥18sp，或 ≥14sp 粗体）算是达标的；`muted` 与 `danger`
+是小字，确实不过 AA。
+
+最影响可用性的是 **Nordic 的填充段与轨道只有 1.61:1** —— 进度条走到哪儿几乎看不出来。
+
+有意思的是设计者知道这类问题：参考稿注释写过「压白字的绿要够深：`#0a6d4b`
+对白字 6.4:1，原 `#087a55` 只有 4.3:1，小字不过 AA」，`accentDeep` 就是为此定义的。
+但 CTA 走的是 `accent` 而非 `accentDeep`，所以白字仍只有 3.48。
+
+**留给阶段 7**：这几项要跟设计确认是照原样发布，还是在浅色主题上偏离设计稿修对比度。
+不要在实现层偷偷改数值。
+
+### 1.7 视觉结构与配色的组合
 
 `GlassVisualStyle` 只描述材质结构，`ThemePalette` 只描述配色：
 
@@ -243,6 +273,13 @@ Digital 的卡片是 `box-shadow: none` 的实色面，Tactile 是内凹底座�
 | 仪表量程 | 0–30 km/h 铺满 286° 弧，起始 218° |
 | 仪表主刻度 | 每 5 km/h 一根，步距 47.667° |
 | 仪表小刻度 | 每 1 km/h 一根，步距 9.533° |
+
+仪表环角度按参考稿原样照抄，含一处不对称：218° 起、286° 扫，缺口 74°，
+中点落在 91°，比正下方偏 1°。要完全对称起点得是 217°。与 1.6 的对比度一样，
+这是参考稿自己的值，不在复刻阶段改；`WorkoutGaugeGeometryTest` 把这 1° 钉住，
+避免日后被当成 bug 修掉。
+
+Compose 的 0° 在 3 点钟，参考稿从 12 点钟量，代码里的起始角是 `218f - 90f`。
 | 阻力量程 | 1–16，步进 1 级 |
 | 目标速度量程 | 0.5–20.0 km/h，步进 0.1 |
 
@@ -343,9 +380,72 @@ $env:ANDROID_SERIAL = '<adb-device-serial>'
 | 1 主题基础设施 | 完成 | `ThemePalette`、`GlassPalette`、`GlassPaletteSelector`、`ThemePaletteStore`、主题色验收页 |
 | 1 的 review 修正 | 完成 | Tactile 描边、系统栏明暗、强调色单一真相源、选择器与色板对比度 |
 | 1 的真机验证 | 完成 | 小米 24091RPADC：8 主题逐个切换无崩溃；结构色（screen/canvas/track）像素级匹配 token，误差 0–1；Nordic/Digital/Tactile/Lime 目视核对 hex 标签全对；Neutral 预设与强调色选色器未被 palette 改动破坏 |
-| 2 通用组件主题贯穿 | 未开始 | — |
+| 2 通用组件主题贯穿 | 完成（8 条工作内容做了 5 条） | `asSelectedSurface` 补前景色、`asTrackSurface`、`asOverlaySurface`、`bodyEndColor` 双色渐层、Lens 接主题；CTA／Connection／danger 三条因 SDK 无对应组件，留到阶段 3/4 |
 | 3 Responsive State Matrix 主画面 | 未开始 | — |
 | 4 运行状态与控制交互 | 未开始 | — |
 | 5 指标编辑抽屉 | 未开始 | — |
 | 6 Digital 与 Tactile 专属风格 | 未开始 | — |
 | 7 视觉与交互验收 | 未开始 | — |
+
+---
+
+## 6. 与 UI 稿的对齐核对（2026-09-08）
+
+核对对象：`D:/Github/FTMS/docs/ui-designs/02-运动控制-workout-controls/02-响应式状态矩阵-Responsive-State-Matrix.html`
+
+### 6.1 已对齐
+
+阶段 3–5 的结构、角度、阈值、文案均逐项比对过 HTML 源码，包括：
+长按 500 ms / 移动容差 / 触发后抑制 click、抽屉 44 px 拖动关闭、抽屉出现在数据位对侧、
+三分类页签、候选项两列与「已在其他位置显示」、页脚说明在竖屏隐藏、候选项按设备能力筛选、
+仪表 218°/286°/47.667°/9.533°、滑动结束 78%、三种写入 Toast 的文案与数值处理。
+
+### 6.2 核对中发现并已修正
+
+| 项 | 原实现 | 参考稿 |
+|---|---|---|
+| 只读提示位置 | 数值下方独立一行 | `float: right`，与 `.mini-step` 同在右上角 |
+| 只读提示颜色 | 危险色 | `#89928d` 中性灰（`.read-only`） |
+| 只读卡描边 | 实线 | `border-style: dashed`（`.control-disabled`） |
+| 只读文案 | 「暂时无法调节」 | 「不可调节」 |
+| 调节浮层滑杆 | 水平 `GlassSlider` | **直立**管状滑杆 58×154，从底部往上填，带「当前」标记 |
+| 调节浮层量程 | 一行「量程 1 – 16」 | 左栏 MAX/MIN 两端 + 右栏 STEP 步进值 |
+| 精调说明 | 无 | `细调 / 每次 1 级` |
+
+### 6.3 补全记录（2026-09-08 第二轮）
+
+6.3 原列的缺口除阶段 6 外已全部实现：
+
+| 元素 | 实现 |
+|---|---|
+| `.gauge-copy span` | `WorkoutGauge` 的 `delta` 参数，冻结时不显示 |
+| `.phase-mini` | `WorkoutGauge` 内的 `PhaseMiniBar` |
+| `.pulse-wave` / `.l-power-bars` / `.slope-graphic` / `.card-state` | `MetricArtwork`，由 `MetricSlot.drawsArt` 控制只在横屏侧卡绘制 |
+| `.metric-trend` | `MetricTrendChart`，仅第 2 组显示；心率系走危险色 |
+| `.metric.source` `visibility: hidden` | **不复刻**。参考稿的浮层压在源卡上，藏起来不留洞；这里浮层居中弹出，源卡多半没被盖住，藏了就是个空槽 |
+| `.metric-scroll-indicator` | 按 `firstVisibleItemIndex / 可滚动项数` 定位 |
+
+仍未实现：七段数码管 / 点环 / 拟物胶帽（Digital 与 Tactile 专属绘制，阶段 6）。
+
+补全过程中真机暴露并修掉的问题：
+
+| 问题 | 原因 |
+|---|---|
+| 竖屏指标格排成 2 列 3 行 | 实现时把 `2 ROWS × 3 COLUMNS` 写反 |
+| 顶栏「室内单车18:42」连成一串 | 设备名与时长挤在一行，缺分隔 |
+| 手机横屏内容被压成一条缝 | 场景条固定占两行；横屏可用高度仅 ~457dp。改为跟随内容滚动 |
+| 仪表「+1.6」压住刻度「30」 | 中心读数用固定 sp，环缩小后不跟着缩。改为按环直径取比例 |
+| 趋势线抖成锯齿 | 12 个采样点挤在 ~52dp 宽内。降到 8 点、噪声减半 |
+
+### 6.4 有意偏离
+
+| 项 | 处理 | 原因 |
+|---|---|---|
+| `.phone` / `.land` 设备外框、灵动岛、状态栏 | 不复刻 | 网页需要在桌面上示意设备；真机上屏幕本身就是外框 |
+| 横屏换组按钮位置 | 放在底部（参考稿在 `.l-meta` 顶栏） | 横竖屏共用一个 `MetricGroupSwitcher`，位置统一 |
+| 换组副文案 | 两个指示点（参考稿是「第 1 组 · 6 / 8 →」） | 点比文字更省横向空间，且不随组数变化重排 |
+| 横竖屏的设备与读数 | 共用一份状态（参考稿竖屏是室内单车 24.8、横屏是跑步机 10.5） | 真机上是同一台设备转屏，不是两台 |
+| 精调说明换行 | 单行 | 面板比参考稿宽，单行不挤 |
+| 直立滑杆管壁底色 | 走 `track` token（深色主题下是深的） | 参考稿在 base/Digital 下硬编码浅色管、Tactile 下是深色，交给 token 分主题决定 |
+| 长按进度环起点 | 左上圆角之后（参考稿 conic 从正上方 −90°） | Compose 无 conic-gradient；改用圆角矩形路径取前一段 |
+| 编辑角标图形 | Material 铅笔图示（参考稿是 `✎` U+270E） | 系统字体不保证有该字，真机上会变成空白圆点 |
