@@ -23,7 +23,7 @@ import top.hasiy.designsystem.GlassDropdownMenu
 import top.hasiy.designsystem.GlassDropdownMenuItem
 import top.hasiy.designsystem.LocalGlassConfig
 import top.hasiy.designsystem.accentToneColor
-import top.hasiy.designsystem.paletteNameRes
+import top.hasiy.designsystem.paletteName
 import top.hasiy.designsystem.screenContentColor
 import top.hasiy.designsystem.tokens.ThemePalette
 import top.hasiyliquidglassdemo.R
@@ -86,7 +86,7 @@ fun PaletteMenuButton(
                 val isSelected = palette.id == current.id
                 GlassDropdownMenuItem(
                     // 文案讀 SDK 自帶的那一份，不在這裡另抄一套
-                    text = stringResource(paletteNameRes(palette.id)),
+                    text = paletteName(palette.id),
                     onClick = {
                         expanded = false
                         onSelect(palette)

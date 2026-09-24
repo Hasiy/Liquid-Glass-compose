@@ -48,7 +48,8 @@
 
 ### 引入
 
-同一个工程内直接依赖 module：
+当前推荐在同一个工程内同时引入 `:designsystem` 与 `:designsystem-tokens`，应用只依赖
+Android module：
 
 ```kotlin
 dependencies {
@@ -56,27 +57,27 @@ dependencies {
 }
 ```
 
-或者打成 AAR：
+可以生成 AAR：
 
 ```bash
 ./gradlew :designsystem:assembleRelease
 ```
 
-产物在 `designsystem/build/outputs/aar/hasiy-design-system-release.aar`。**直接拷贝 AAR** 时（而不是通过 module 或 Maven 依赖）需要自己补上模糊引擎，因为裸 AAR 不带传递依赖：
+产物在 `designsystem/build/outputs/aar/designsystem-release.aar`。裸 AAR 不是单文件 SDK：
+它不包含 `designsystem-tokens`、Haze、Compose 或 Material3。离线接入必须成套提供 tokens
+JVM JAR 和完整依赖版本清单，详细要求见
+[SDK_USAGE_AND_EXTENSION_GUIDE.md](SDK_USAGE_AND_EXTENSION_GUIDE.md)。
+
+计划中的 Maven 消费坐标为：
 
 ```kotlin
-implementation("dev.chrisbanes.haze:haze:1.4.0")
+dependencies {
+    implementation("top.hasiy:hasiy-design-system-compose:1.0.0")
+}
 ```
 
-也可以走本地 Maven：
-
-```bash
-./gradlew :designsystem:publishReleasePublicationToMavenLocal
-```
-
-```text
-top.hasiy:hasiy-design-system-compose:1.0.0
-```
+当前 tokens artifact 尚未配置 Maven publish task，因此还不能只发布 Android artifact 后
+对外宣称该坐标可用；发布前需先闭合两个 artifact 的发布链与独立 consumer 验证。
 
 ### 最小示例
 
@@ -359,10 +360,11 @@ SideEffect {
 
 # 编译并安装 demo
 ./gradlew :app:installDebug
-
-# 发布到本地 Maven
-./gradlew :designsystem:publishReleasePublicationToMavenLocal
 ```
+
+Maven 发布链当前仍需补齐 `designsystem-tokens` artifact，不能只执行
+`:designsystem:publishReleasePublicationToMavenLocal`。发布与独立 consumer 的验收步骤见
+[SDK_USAGE_AND_EXTENSION_GUIDE.md](SDK_USAGE_AND_EXTENSION_GUIDE.md)。
 
 ## 编译注意事项
 
@@ -373,7 +375,8 @@ Windows 下的推荐 JDK、Gradle `Selector.open()`/loopback 故障判断、多�
 ## 相关文档
 
 - [BUILDING.md](BUILDING.md) — Windows 编译、APK 打包、真机安装与故障排查注意事项
-- [designsystem/README.md](designsystem/README.md) — SDK 的 API 说明与模糊契约（英文）
-- [design-system-architecture.md](design-system-architecture.md) — SDK 模块边界、主题模型、依赖方向与扩展约定
+- [SDK_USAGE_AND_EXTENSION_GUIDE.md](SDK_USAGE_AND_EXTENSION_GUIDE.md) — 公模 SDK 接入、主题与组件使用、离线交付及二次开发注意事项
+- [designsystem/README.md](designsystem/README.md) — 既有 API 与模糊契约说明（英文；交付方式以公模指南为准）
+- [design-system-architecture.md](design-system-architecture.md) — SDK 模块边界、架构审阅结论、风险与可追溯验收矩阵
 - [neutral_theme_plan.md](neutral_theme_plan.md) — Neutral 浅色主题的完整改造方案与实施记录，包含每一轮调整的原因
 - [dynamic_light_tab_bar.md](dynamic_light_tab_bar.md) — 动态光照 Tab Bar 的设计说明
