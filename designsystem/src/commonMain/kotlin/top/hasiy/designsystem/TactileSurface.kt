@@ -4,20 +4,30 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.CacheDrawScope
+import androidx.compose.ui.draw.DrawResult
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
-/** 面的四條邊。內側光影是**逐邊**畫的，見 [drawInsetEdge]。 */
+/** 面的四條邊。內側光影是**逐邊**畫的，見 [buildBevel]。 */
 private enum class Edge { TOP, LEFT, BOTTOM, RIGHT }
 
 /**
@@ -59,23 +69,19 @@ fun Modifier.tactileKeycap(corner: Dp = KEYCAP_CORNER): Modifier = this
     )
     .clip(RoundedCornerShape(corner))
     // 底色是 `linear-gradient(145deg, …)`——固定角度，不是盒子對角線
-    .drawBehind {
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                0f to KEYCAP_TOP,
-                0.45f to KEYCAP_MID,
-                1f to KEYCAP_BOTTOM,
-                start = Offset.Zero,
-                end = gradientEnd(size, BODY_UX, BODY_UY),
-            ),
-            cornerRadius = CornerRadius(corner.toPx()),
+    .drawWithCache {
+        val brush = Brush.linearGradient(
+            0f to KEYCAP_TOP,
+            0.45f to KEYCAP_MID,
+            1f to KEYCAP_BOTTOM,
+            start = Offset.Zero,
+            end = gradientEnd(size, BODY_UX, BODY_UY),
         )
+        val radius = CornerRadius(corner.toPx())
+        onDrawBehind { drawRoundRect(brush = brush, cornerRadius = radius) }
     }
     .border(1.dp, KEYCAP_EDGE, RoundedCornerShape(corner))
-    .drawWithContent {
-        drawContent()
-        drawBevel(corner)
-    }
+    .drawWithCache(BevelCacheBlock(corner))
 
 /**
  * Tactile 的次級面板：dock、換組條、分類頁籤這類容器。
@@ -94,22 +100,50 @@ fun Modifier.tactilePanel(corner: Dp = PANEL_CORNER): Modifier = this
         spotColor = OUTER_SHADOW,
     )
     .clip(RoundedCornerShape(corner))
-    .drawBehind {
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                0f to PANEL_TOP,
-                1f to PANEL_BOTTOM,
-                start = Offset.Zero,
-                end = gradientEnd(size, BODY_UX, BODY_UY),
-            ),
-            cornerRadius = CornerRadius(corner.toPx()),
+    .drawWithCache {
+        val brush = Brush.linearGradient(
+            0f to PANEL_TOP,
+            1f to PANEL_BOTTOM,
+            start = Offset.Zero,
+            end = gradientEnd(size, BODY_UX, BODY_UY),
         )
+        val radius = CornerRadius(corner.toPx())
+        onDrawBehind { drawRoundRect(brush = brush, cornerRadius = radius) }
     }
     .border(1.dp, KEYCAP_EDGE, RoundedCornerShape(corner))
-    .drawWithContent {
-        drawContent()
-        drawBevel(corner)
+    .drawWithCache(BevelCacheBlock(corner))
+
+/** Equality keeps the cached bevel alive when recomposition recreates the same modifier. */
+private data class BevelCacheBlock(val corner: Dp) : (CacheDrawScope) -> DrawResult {
+    override fun invoke(scope: CacheDrawScope): DrawResult = with(scope) {
+        val width = size.width.roundToInt().coerceAtLeast(1)
+        val height = size.height.roundToInt().coerceAtLeast(1)
+        val strokes = buildBevel(size, corner.toPx(), HIGHLIGHT_BAND.toPx(), SHADOW_BAND.toPx())
+        // Bound each RGBA cache to 4 MiB; large SDK surfaces retain vector drawing.
+        if (width.toLong() * height > MAX_BEVEL_CACHE_PIXELS) {
+            return@with onDrawWithContent {
+                drawContent()
+                drawBevelStrokes(strokes)
+            }
+        }
+        val overlay = ImageBitmap(width, height)
+        CanvasDrawScope().draw(this, layoutDirection, Canvas(overlay), size) {
+            drawBevelStrokes(strokes)
+        }
+        onDrawWithContent {
+            drawContent()
+            drawImage(overlay)
+        }
     }
+}
+
+private const val MAX_BEVEL_CACHE_PIXELS = 1_048_576L
+
+private fun DrawScope.drawBevelStrokes(strokes: List<BevelStroke>) {
+    strokes.forEach { stroke ->
+        drawRoundRect(stroke.brush, stroke.offset, stroke.size, stroke.corner, style = stroke.style)
+    }
+}
 
 /**
  * 一圈倒角：左、上亮，右、下暗。
@@ -119,74 +153,39 @@ fun Modifier.tactilePanel(corner: Dp = PANEL_CORNER): Modifier = this
  *
  * @param corner 圓角半徑
  */
-private fun DrawScope.drawBevel(corner: Dp) {
-    drawInsetEdge(corner, INNER_HIGHLIGHT, HIGHLIGHT_BAND, Edge.TOP)
-    drawInsetEdge(corner, INNER_HIGHLIGHT.scaleAlpha(SIDE_RATIO), HIGHLIGHT_BAND, Edge.LEFT)
-    drawInsetEdge(corner, INNER_SHADOW, SHADOW_BAND, Edge.BOTTOM)
-    drawInsetEdge(corner, INNER_SHADOW.scaleAlpha(SIDE_RATIO), SHADOW_BAND, Edge.RIGHT)
-}
+private data class BevelStroke(
+    val brush: Brush,
+    val offset: Offset,
+    val size: Size,
+    val corner: CornerRadius,
+    val style: Stroke,
+)
 
-/**
- * 沿**一條邊**畫一道柔和的內側光帶。
- *
- * 兩段柔化疊在一起：往內用 [SOFT_EDGE_LAYERS] 層遞減的描邊堆出「模糊」，
- * 再套一層垂直於這條邊的遮罩，把光限制在這條邊上、轉過圓角時淡掉。
- *
- * @param corner 圓角半徑
- * @param color 帶最外側的顏色
- * @param band 光帶寬度，相當於原稿的模糊半徑
- * @param edge 畫在哪一條邊
- */
-private fun DrawScope.drawInsetEdge(corner: Dp, color: Color, band: Dp, edge: Edge) {
-    val bandPx = band.toPx()
-    val step = bandPx / SOFT_EDGE_LAYERS
-    val cornerPx = corner.toPx()
-    // 遮罩的淡出距離：太短會在圓角處硬切，太長就漫到對邊去
-    val reach = bandPx * MASK_REACH
-
-    repeat(SOFT_EDGE_LAYERS) { layer ->
-        val t = layer.toFloat() / SOFT_EDGE_LAYERS
-        // 二次方衰減：線性的尾巴是硬切的，帶的內緣會看出一條界線
-        val tint = color.scaleAlpha((1f - t) * (1f - t))
-        val inset = step * layer + step / 2f
-        val brush = when (edge) {
-            Edge.TOP -> Brush.verticalGradient(
-                0f to tint,
-                1f to Color.Transparent,
-                startY = 0f,
-                endY = reach,
-            )
-
-            Edge.BOTTOM -> Brush.verticalGradient(
-                0f to Color.Transparent,
-                1f to tint,
-                startY = size.height - reach,
-                endY = size.height,
-            )
-
-            Edge.LEFT -> Brush.horizontalGradient(
-                0f to tint,
-                1f to Color.Transparent,
-                startX = 0f,
-                endX = reach,
-            )
-
-            Edge.RIGHT -> Brush.horizontalGradient(
-                0f to Color.Transparent,
-                1f to tint,
-                startX = size.width - reach,
-                endX = size.width,
-            )
+/** Cache the 48 bevel brushes and geometries until surface size/density changes. */
+private fun buildBevel(size: Size, corner: Float, highlightBand: Float, shadowBand: Float): List<BevelStroke> =
+    buildList {
+        Edge.entries.forEach { edge ->
+            val band = if (edge == Edge.TOP || edge == Edge.LEFT) highlightBand else shadowBand
+            val color = (if (edge == Edge.TOP || edge == Edge.LEFT) INNER_HIGHLIGHT else INNER_SHADOW)
+                .scaleAlpha(if (edge == Edge.LEFT || edge == Edge.RIGHT) SIDE_RATIO else 1f)
+            val step = band / SOFT_EDGE_LAYERS
+            val reach = band * MASK_REACH
+            repeat(SOFT_EDGE_LAYERS) { layer ->
+                val t = layer.toFloat() / SOFT_EDGE_LAYERS
+                val tint = color.scaleAlpha((1f - t) * (1f - t))
+                val inset = step * layer + step / 2f
+                if (size.width <= inset * 2 || size.height <= inset * 2) return@repeat
+                val brush = when (edge) {
+                    Edge.TOP -> Brush.verticalGradient(0f to tint, 1f to Color.Transparent, startY = 0f, endY = reach)
+                    Edge.BOTTOM -> Brush.verticalGradient(0f to Color.Transparent, 1f to tint, startY = size.height - reach, endY = size.height)
+                    Edge.LEFT -> Brush.horizontalGradient(0f to tint, 1f to Color.Transparent, startX = 0f, endX = reach)
+                    Edge.RIGHT -> Brush.horizontalGradient(0f to Color.Transparent, 1f to tint, startX = size.width - reach, endX = size.width)
+                }
+                add(BevelStroke(brush, Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2),
+                    CornerRadius((corner - inset).coerceAtLeast(0f)), Stroke(width = step)))
+            }
         }
-        drawRoundRect(
-            brush = brush,
-            topLeft = Offset(inset, inset),
-            size = Size(size.width - inset * 2, size.height - inset * 2),
-            cornerRadius = CornerRadius((cornerPx - inset).coerceAtLeast(0f)),
-            style = Stroke(width = step),
-        )
     }
-}
 
 private fun Color.scaleAlpha(factor: Float): Color = copy(alpha = alpha * factor)
 
@@ -252,19 +251,28 @@ val TACTILE_LAMP_HEIGHT = 5.dp
  */
 fun Modifier.tactileScreenTexture(enabled: Boolean = true): Modifier =
     // drawBehind 而不是 drawWithContent：這層是**底紋**，要壓在所有內容底下。
-    if (!enabled) this else drawBehind {
+    if (!enabled) this else drawWithCache {
         val cell = TEXTURE_CELL.toPx()
-        val radius = TEXTURE_DOT_RADIUS.toPx()
-        val offsetX = cell * TEXTURE_DOT_X
-        val offsetY = cell * TEXTURE_DOT_Y
-        var y = offsetY
-        while (y < size.height) {
-            var x = offsetX
-            while (x < size.width) {
-                drawCircle(TEXTURE_DOT, radius, Offset(x, y))
-                x += cell
+        val tileSize = cell.roundToInt().coerceAtLeast(1)
+        val factor = cell / tileSize
+        val radius = TEXTURE_DOT_RADIUS.toPx() / factor
+        val tile = ImageBitmap(tileSize, tileSize)
+        val canvas = Canvas(tile)
+        val paint = Paint().apply { color = TEXTURE_DOT; isAntiAlias = true }
+        // Include neighboring dots so a circle crossing a tile edge remains seamless.
+        for (y in -1..1) for (x in -1..1) {
+            canvas.drawCircle(
+                Offset(tileSize * (TEXTURE_DOT_X + x), tileSize * (TEXTURE_DOT_Y + y)),
+                radius,
+                paint,
+            )
+        }
+        val brush = ShaderBrush(ImageShader(tile, TileMode.Repeated, TileMode.Repeated))
+        onDrawBehind {
+            // Keep the original dp period even when density yields a fractional pixel cell.
+            scale(factor, factor, pivot = Offset.Zero) {
+                drawRect(brush, size = Size(size.width / factor, size.height / factor))
             }
-            y += cell
         }
     }
 

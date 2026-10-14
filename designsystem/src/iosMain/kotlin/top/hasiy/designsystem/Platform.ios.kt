@@ -7,11 +7,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 internal actual val platformSdkInt: Int
     get() = Int.MAX_VALUE
 
-// iOS 沒有 BlurMaskFilter 等價物，一律回報 false，
+// iOS 沒有 BlurMaskFilter 等價物，一律回報 null，
 // 由 common 層的多層 Stroke 近似實現接管（視覺驗收見遷移方案 §8）。
-internal actual fun DrawScope.drawBlurredShadowPath(
-    path: Path,
-    offsetY: Float,
+internal actual fun createBlurredShadowPainter(
     blurRadiusPx: Float,
     color: Color,
-): Boolean = false
+): ((DrawScope, Path, Float) -> Unit)? = null

@@ -13,8 +13,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
@@ -56,6 +57,11 @@ private enum class DemoScreen {
     STATE_MATRIX,
 }
 
+private val AccentColorSaver = Saver<Color, String>(
+    save = { it.value.toString() },
+    restore = { Color(it.toULong()) },
+)
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,13 +80,13 @@ class MainActivity : ComponentActivity() {
             )
             var presetIndex by rememberSaveable { mutableIntStateOf(0) }
             // 切主題時重置為該主題對強調色的預設（淺色的中性預設開啟，其餘關閉）
-            var accentEnabled by remember(presetIndex) {
+            var accentEnabled by rememberSaveable(presetIndex) {
                 mutableStateOf(presets[presetIndex].accentEnabled)
             }
-            var accentColor by remember(presetIndex) {
+            var accentColor by rememberSaveable(presetIndex, stateSaver = AccentColorSaver) {
                 mutableStateOf(presets[presetIndex].accentColor)
             }
-            var shadowEnabled by remember(presetIndex) {
+            var shadowEnabled by rememberSaveable(presetIndex) {
                 mutableStateOf(presets[presetIndex].shadowEnabled)
             }
             var screen by rememberSaveable { mutableStateOf(DemoScreen.CATALOG) }

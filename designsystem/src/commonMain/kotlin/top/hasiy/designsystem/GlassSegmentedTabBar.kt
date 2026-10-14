@@ -2,7 +2,8 @@ package top.hasiy.designsystem
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +30,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -54,6 +59,8 @@ fun GlassSegmentedTabBar(
 
     val safeSelectedIndex = selectedIndex.coerceIn(items.indices)
     val density = LocalDensity.current
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val currentOnSelect by rememberUpdatedState(onSelect)
     var widthPx by remember { mutableFloatStateOf(0f) }
     var dragX by remember { mutableFloatStateOf(Float.NaN) }
     val itemWidthPx = widthPx / items.size
@@ -90,16 +97,16 @@ fun GlassSegmentedTabBar(
             .height(height)
             .onSizeChanged { widthPx = it.width.toFloat() }
             .glassSurface(shape = barShape, config = barConfig)
-            .pointerInput(items.size, widthPx) {
+            .pointerInput(items.size, widthPx, rtl) {
                 detectDragGestures(
-                    onDragStart = { dragX = it.x.coerceIn(0f, widthPx) },
+                    onDragStart = { dragX = (if (rtl) widthPx - it.x else it.x).coerceIn(0f, widthPx) },
                     onDrag = { change, _ ->
                         change.consume()
-                        dragX = change.position.x.coerceIn(0f, widthPx)
+                        dragX = (if (rtl) widthPx - change.position.x else change.position.x).coerceIn(0f, widthPx)
                     },
                     onDragEnd = {
                         if (!dragX.isNaN() && widthPx > 0f) {
-                            onSelect(
+                            currentOnSelect(
                                 ((dragX / widthPx) * items.size)
                                     .toInt()
                                     .coerceIn(items.indices)
@@ -122,14 +129,16 @@ fun GlassSegmentedTabBar(
             )
         }
 
-        Row(modifier = Modifier.fillMaxSize()) {
+        Row(modifier = Modifier.fillMaxSize().selectableGroup()) {
             items.forEachIndexed { index, label ->
                 val selected = index == safeSelectedIndex
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clickable(
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = { onSelect(index) }

@@ -2,7 +2,11 @@ package top.hasiy.designsystem
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -31,6 +35,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
@@ -85,9 +92,17 @@ fun GlassCheckbox(
     }
     // 勾的顏色跟著方框底走：asSelectedSurface 已經依底色挑好前景色
     val checkmarkColor = boxConfig.contentColor
+    val interactionSource = remember { MutableInteractionSource() }
 
     Box(
-        modifier = modifier.size(CHECKBOX_SIZE),
+        modifier = modifier.size(CHECKBOX_SIZE).toggleable(
+            value = checked,
+            role = Role.Checkbox,
+            enabled = enabled && onCheckedChange != null,
+            interactionSource = interactionSource,
+            indication = null,
+            onValueChange = { onCheckedChange?.invoke(it) },
+        ),
         contentAlignment = Alignment.Center
     ) {
         // 方框本身：clip 只作用在這一層，勾號不受影響
@@ -96,10 +111,7 @@ fun GlassCheckbox(
                 .matchParentSize()
                 // 淺色主題下要比所在卡片壓暗一階，方框才有輪廓
                 .glassSurface(shape = boxShape, config = boxConfig)
-                .clickable(
-                    enabled = enabled && onCheckedChange != null,
-                    onClick = { onCheckedChange?.invoke(!checked) }
-                )
+                .indication(interactionSource, LocalIndication.current)
         )
         // 勾號：畫布比方框大一圈，收筆處溢出右上角
         Canvas(modifier = Modifier.size(CHECKBOX_SIZE * CHECKMARK_CANVAS_SCALE)) {
@@ -185,7 +197,9 @@ fun GlassRadioButton(
         modifier = modifier
             .size(RADIO_SIZE)
             .glassSurface(shape = CircleShape, config = radioConfig)
-            .clickable(
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
                 enabled = enabled && onClick != null,
                 onClick = { onClick?.invoke() }
             ),
@@ -236,6 +250,9 @@ fun GlassSlider(
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
+    require(steps >= 0) { "steps must be non-negative" }
+    require(valueRange.start.isFinite() && valueRange.endInclusive.isFinite() &&
+        valueRange.endInclusive >= valueRange.start) { "valueRange must be finite and ordered" }
     if (config.native) {
         Slider(
             value = value,
@@ -254,15 +271,33 @@ fun GlassSlider(
     // 已選段：見 GlassConfig.asFillSurface
     val fillConfig = config.asFillSurface(enabled)
 
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnFinished by rememberUpdatedState(onValueChangeFinished)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val rangeLength = valueRange.endInclusive - valueRange.start
+    val safeValue = if (value.isFinite()) value.coerceIn(valueRange) else valueRange.start
+    val fraction = if (rangeLength > 0f) (safeValue - valueRange.start) / rangeLength else 0f
+    val updateValueFromFraction: (Float) -> Unit = { newFraction ->
+        val clamped = newFraction.coerceIn(0f, 1f)
+        val snapped = if (steps > 0) {
+            val intervals = steps.toFloat() + 1f
+            (clamped * intervals).roundToInt() / intervals
+        } else clamped
+        currentOnValueChange(valueRange.start + snapped * rangeLength)
+    }
+    val currentUpdateValue by rememberUpdatedState(updateValueFromFraction)
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(SLIDER_THUMB_SIZE),
+            .height(SLIDER_THUMB_SIZE)
+            .glassSliderSemantics(safeValue, valueRange, steps, enabled) { target ->
+                val nextFraction = if (rangeLength > 0f) (target - valueRange.start) / rangeLength else 0f
+                currentUpdateValue(nextFraction)
+                currentOnFinished?.invoke()
+            },
         contentAlignment = Alignment.CenterStart
     ) {
-        val trackWidth = maxWidth - SLIDER_THUMB_SIZE
-        val rangeLength = valueRange.endInclusive - valueRange.start
-        val fraction = ((value - valueRange.start) / rangeLength).coerceIn(0f, 1f)
+        val trackWidth = (maxWidth - SLIDER_THUMB_SIZE).coerceAtLeast(0.dp)
 
         var dragOffset by remember { mutableFloatStateOf(0f) }
         var dragStartFraction by remember { mutableFloatStateOf(fraction) }
@@ -271,20 +306,6 @@ fun GlassSlider(
             targetValue = trackWidth * fraction,
             label = "glassSliderThumb"
         )
-
-        val updateValueFromFraction: (Float) -> Unit = remember(valueRange, steps) {
-            { newFraction ->
-                val clampedFraction = newFraction.coerceIn(0f, 1f)
-                val snappedFraction = if (steps > 0) {
-                    val stepFraction = 1f / (steps + 1)
-                    val stepIndex = (clampedFraction / stepFraction).roundToInt()
-                    (stepIndex * stepFraction).coerceIn(0f, 1f)
-                } else {
-                    clampedFraction
-                }
-                onValueChange(valueRange.start + snappedFraction * rangeLength)
-            }
-        }
 
         Box(
             modifier = Modifier
@@ -296,11 +317,12 @@ fun GlassSlider(
                 )
                 .then(
                     if (enabled) {
-                        Modifier.pointerInput(Unit) {
+                        Modifier.pointerInput(valueRange, steps, rtl) {
                             detectTapGestures { offset ->
+                                if (size.width <= 0) return@detectTapGestures
                                 val newFraction = offset.x / size.width.toFloat()
-                                updateValueFromFraction(newFraction)
-                                onValueChangeFinished?.invoke()
+                                currentUpdateValue(if (rtl) 1f - newFraction else newFraction)
+                                currentOnFinished?.invoke()
                             }
                         }
                     } else {
@@ -323,7 +345,7 @@ fun GlassSlider(
                 .glassSurface(shape = CircleShape, config = config.asControlSurface())
                 .then(
                     if (enabled) {
-                        Modifier.pointerInput(Unit) {
+                        Modifier.pointerInput(valueRange, steps, trackWidth, rtl) {
                             detectHorizontalDragGestures(
                                 onDragStart = {
                                     dragOffset = 0f
@@ -333,14 +355,15 @@ fun GlassSlider(
                                     // 回起點。
                                     dragStartFraction = latestFraction
                                 },
-                                onDragEnd = { onValueChangeFinished?.invoke() },
-                                onDragCancel = { onValueChangeFinished?.invoke() },
+                                onDragEnd = { currentOnFinished?.invoke() },
+                                onDragCancel = { dragOffset = 0f },
                                 onHorizontalDrag = { change, dragAmount ->
+                                    if (trackWidth <= 0.dp) return@detectHorizontalDragGestures
                                     change.consume()
-                                    dragOffset += dragAmount
+                                    dragOffset += if (rtl) -dragAmount else dragAmount
                                     val newFraction =
                                         dragStartFraction + dragOffset / trackWidth.toPx()
-                                    updateValueFromFraction(newFraction)
+                                    currentUpdateValue(newFraction)
                                 }
                             )
                         }

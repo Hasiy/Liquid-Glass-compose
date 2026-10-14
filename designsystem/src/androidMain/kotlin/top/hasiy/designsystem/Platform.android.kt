@@ -14,26 +14,28 @@ import androidx.compose.ui.graphics.toArgb
 internal actual val platformSdkInt: Int
     get() = Build.VERSION.SDK_INT
 
-internal actual fun DrawScope.drawBlurredShadowPath(
-    path: Path,
-    offsetY: Float,
+internal actual fun createBlurredShadowPainter(
     blurRadiusPx: Float,
     color: Color,
-): Boolean {
+): ((DrawScope, Path, Float) -> Unit)? {
     // API 27 以下的硬體加速 Canvas 會忽略 BlurMaskFilter，畫出來是無模糊的實心塊，
-    // 寧可回報 false 讓 common 層退回多層 Stroke 近似。
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
-    drawIntoCanvas { canvas ->
-        val paint = Paint().asFrameworkPaint().apply {
-            isAntiAlias = true
-            this.color = color.toArgb()
-            maskFilter = BlurMaskFilter(blurRadiusPx, BlurMaskFilter.Blur.NORMAL)
-        }
-        val nativeCanvas = canvas.nativeCanvas
-        val checkpoint = nativeCanvas.save()
-        nativeCanvas.translate(0f, offsetY)
-        nativeCanvas.drawPath(path.asAndroidPath(), paint)
-        nativeCanvas.restoreToCount(checkpoint)
+    // 寧可回報 null 讓 common 層退回多層 Stroke 近似。
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || blurRadiusPx <= 0f) return null
+    val paint = Paint().asFrameworkPaint().apply {
+        isAntiAlias = true
+        this.color = color.toArgb()
+        maskFilter = BlurMaskFilter(blurRadiusPx, BlurMaskFilter.Blur.NORMAL)
     }
-    return true
+    return { scope, path, offsetY ->
+        scope.drawIntoCanvas { canvas ->
+            val nativeCanvas = canvas.nativeCanvas
+            val checkpoint = nativeCanvas.save()
+            try {
+                nativeCanvas.translate(0f, offsetY)
+                nativeCanvas.drawPath(path.asAndroidPath(), paint)
+            } finally {
+                nativeCanvas.restoreToCount(checkpoint)
+            }
+        }
+    }
 }

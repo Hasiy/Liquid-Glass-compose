@@ -1,0 +1,61 @@
+name: Verify design system
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Unit tests, API and APK
+        run: bash ./gradlew :app:testDebugUnitTest :designsystem:testDebugUnitTest :designsystem-tokens:jvmTest apiCheck :app:assembleDebug
+      - name: Publish to isolated local repository
+        run: >-
+          bash ./gradlew
+          :designsystem:publishAndroidReleasePublicationToVerificationRepository
+          :designsystem:publishKotlinMultiplatformPublicationToVerificationRepository
+          :designsystem-tokens:publishAndroidReleasePublicationToVerificationRepository
+          :designsystem-tokens:publishJvmPublicationToVerificationRepository
+          :designsystem-tokens:publishKotlinMultiplatformPublicationToVerificationRepository
+      - name: Compile independent Maven consumer
+        run: bash ./gradlew -p fixtures/android-consumer assembleDebug
+      - name: Enable emulator hardware acceleration
+        run: sudo chmod a+rw /dev/kvm
+      - name: Android UI regression
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          script: bash ./gradlew :designsystem:connectedDebugAndroidTest
+
+  ios-compile:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Compile iOS device and simulator source sets
+        run: >-
+          bash ./gradlew
+          :designsystem:compileKotlinIosArm64
+          :designsystem:compileKotlinIosSimulatorArm64
+          :designsystem:compileTestKotlinIosSimulatorArm64
+          :designsystem-tokens:compileKotlinIosArm64
+          :designsystem-tokens:compileKotlinIosSimulatorArm64
+          :designsystem-tokens:compileTestKotlinIosSimulatorArm64

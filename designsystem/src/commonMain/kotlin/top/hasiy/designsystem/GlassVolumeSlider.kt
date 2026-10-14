@@ -22,6 +22,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 
 /** 音量條預設高度：夠粗才好直接用手指推 */
 private val VOLUME_SLIDER_HEIGHT = 44.dp
@@ -72,6 +74,8 @@ fun GlassVolumeSlider(
     icon: ImageVector? = null,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
+    require(valueRange.start.isFinite() && valueRange.endInclusive.isFinite() &&
+        valueRange.endInclusive >= valueRange.start) { "valueRange must be finite and ordered" }
     if (config.native) {
         Slider(
             value = value,
@@ -85,8 +89,9 @@ fun GlassVolumeSlider(
     }
 
     val trackShape = RoundedCornerShape(height / 2)
-    val rangeLength = (valueRange.endInclusive - valueRange.start).takeIf { it > 0f } ?: 1f
-    val fraction = ((value - valueRange.start) / rangeLength).coerceIn(0f, 1f)
+    val rangeLength = valueRange.endInclusive - valueRange.start
+    val safeValue = if (value.isFinite()) value.coerceIn(valueRange) else valueRange.start
+    val fraction = if (rangeLength > 0f) (safeValue - valueRange.start) / rangeLength else 0f
     val contentAlpha = if (enabled) 1f else VOLUME_SLIDER_DISABLED_ALPHA
 
     // 已填充段：見 GlassConfig.asFillSurface
@@ -97,16 +102,17 @@ fun GlassVolumeSlider(
     val currentOnFinished by rememberUpdatedState(onValueChangeFinished)
     val currentRangeStart by rememberUpdatedState(valueRange.start)
     val currentRangeLength by rememberUpdatedState(rangeLength)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     val gestureModifier = if (enabled) {
-        Modifier.pointerInput(Unit) {
+        Modifier.pointerInput(valueRange, rtl) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val width = size.width.toFloat()
-                if (width <= 0f) return@awaitEachGesture
+                if (width <= 0f || currentRangeLength <= 0f) return@awaitEachGesture
 
                 fun emit(x: Float) {
-                    val f = (x / width).coerceIn(0f, 1f)
+                    val f = ((if (rtl) width - x else x) / width).coerceIn(0f, 1f)
                     currentOnValueChange(currentRangeStart + f * currentRangeLength)
                 }
                 emit(down.position.x)
@@ -132,6 +138,10 @@ fun GlassVolumeSlider(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .glassSliderSemantics(safeValue, valueRange, enabled = enabled) { target ->
+                currentOnValueChange(target)
+                currentOnFinished?.invoke()
+            }
             .glassSurface(
                 shape = trackShape,
                 config = config.asTrackSurface(enabled)

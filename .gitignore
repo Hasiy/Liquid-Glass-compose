@@ -16,3 +16,6 @@ liquidglass/build/
 /glass-demo/build
 /designsystem-tokens/build
 /designsystem/build
+fixtures/**/build/
+fixtures/**/.gradle/
+fixtures/**/.kotlin/

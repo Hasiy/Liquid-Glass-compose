@@ -13,11 +13,12 @@ internal expect val platformSdkInt: Int
 /**
  * 尝试以平台原生高斯模糊绘制向外偏移的软阴影路径（一次成型，无近似阶梯）。
  *
- * @return false 表示平台不支持原生模糊，调用方退回 common 的多层 Stroke 近似实现
+ * Paint 与滤镜由调用方在绘制缓存中创建一次，尺寸或主题变化后再重建。
+ * @param blurRadiusPx 模糊半径，单位为像素，须大于 0。
+ * @param color 阴影颜色。
+ * @return 缓存的绘制函数；null 表示退回 common 的多层 Stroke 近似实现。
  */
-internal expect fun DrawScope.drawBlurredShadowPath(
-    path: Path,
-    offsetY: Float,
+internal expect fun createBlurredShadowPainter(
     blurRadiusPx: Float,
     color: Color,
-): Boolean
+): ((DrawScope, Path, Float) -> Unit)?

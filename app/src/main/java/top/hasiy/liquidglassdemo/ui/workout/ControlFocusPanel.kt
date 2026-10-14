@@ -81,7 +81,7 @@ import top.hasiyliquidglassdemo.R
  * 精調的 ± 是離散操作，直接寫。
  *
  * @param metric 正在調節的指標
- * @param currentValue 指標當前值的顯示字串
+ * @param currentValue 指標當前的數值，不依賴顯示語言
  * @param range 量程
  * @param config 玻璃主題參數
  * @param onCommit 鬆手後寫出新值
@@ -91,14 +91,14 @@ import top.hasiyliquidglassdemo.R
 @Composable
 fun ControlFocusPanel(
     metric: WorkoutMetric,
-    currentValue: String,
+    currentValue: Float,
     range: ControlRange,
     config: GlassConfig = LocalGlassConfig.current,
     onCommit: (Float) -> Unit,
     onStep: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val committed = currentValue.toFloatOrNull() ?: range.min
+    val committed = currentValue.coerceIn(range.min, range.max)
     // 換一個指標調節時要重置暫存值，否則會把上一個指標的數字帶過來
     var draft by remember(metric.id) { mutableFloatStateOf(committed) }
     // 外部寫入成功或回彈後，暫存值要跟上——否則滑桿會停在一個已經作廢的位置

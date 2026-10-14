@@ -7,8 +7,7 @@
 - **SDK 使用方**：在 Android Compose 应用中接入 Hasiy Design System，使用主题、玻璃表面和现成组件。
 - **二次开发方**：增加品牌主题、自建业务组件、扩充 SDK 公共组件，或为新平台实现渲染器。
 
-当前可直接使用的 UI SDK 是 Android Library `:designsystem`；`:designsystem-tokens` 是纯
-Kotlin Multiplatform 主题契约，不包含 Compose UI 或 iOS 渲染实现。
+当前 UI SDK `:designsystem` 已采用 Compose Multiplatform，共享组件位于 `commonMain`，平台阴影分别由 Android/iOS actual 实现。SearchBar 与 legacy Tab Bar 仍仅限 Android。`:designsystem-tokens` 是纯 Kotlin 主题契约；iOS 实机与外部消费者尚需验收。
 
 ## 2. 当前基线
 
@@ -16,12 +15,13 @@ Kotlin Multiplatform 主题契约，不包含 Compose UI 或 iOS 渲染实现。
 |:--|:--|
 | Android minSdk | 26 |
 | Android compileSdk / targetSdk | 35 / 35 |
-| Kotlin | 2.0.21 |
+| Kotlin | 2.1.21 |
+| Gradle / AGP / CMP | 9.5.0 / 8.13.2 / 1.8.2 |
 | Java bytecode target | 11 |
 | 推荐构建 JDK | 21 |
 | Compose BOM | 2024.10.01 |
 | Haze | 1.4.0 |
-| Android SDK 坐标 | `top.hasiy:hasiy-design-system-compose:1.0.0` |
+| Android SDK 坐标 | `top.hasiy:hasiy-design-system-compose:2.0.0` |
 | Token artifact 坐标 | `top.hasiy:designsystem-tokens:1.0.0` |
 
 构建 JDK 与产物 bytecode target 是两件事：本项目推荐用 JDK 21 启动 Gradle，但 Android
@@ -32,7 +32,7 @@ Kotlin Multiplatform 主题契约，不包含 Compose UI 或 iOS 渲染实现。
 | 方式 | 当前状态 | 适用场景 |
 |:--|:--:|:--|
 | 源码模块 | 推荐、可用 | 同仓开发、内部公模、需要调试或二次开发 |
-| Maven 仓库 | 目标推荐、发布链待补齐 | 多项目稳定消费、统一版本治理 |
+| Maven 仓库 | 本地发布已配置；外部仓库需另行验收 | 多项目稳定消费、统一版本治理 |
 | 裸 AAR | 非推荐、非单文件 | 受限离线环境，且能成套管理所有依赖 |
 
 ### 3.1 源码模块接入
@@ -62,18 +62,19 @@ SDK 内部。
 
 ```kotlin
 dependencies {
-    implementation("top.hasiy:hasiy-design-system-compose:1.0.0")
+    implementation("top.hasiy:hasiy-design-system-compose:2.0.0")
 }
 ```
 
-Maven/Gradle metadata 会负责 Compose、Material3、Haze 与 tokens 的依赖关系。但当前仓库的
-tokens 模块尚未配置 Maven publish task，因此 **1.0.0 不能仅凭已有 Android publication
-配置视为可对外发布**。发布者必须先完成以下事项：
+Maven/Gradle metadata 管理 Compose、Material3、Haze 与 tokens 的依赖。两个模块都已启用
+`maven-publish`，并提供 `build/verification-maven` 本地验证仓库。SDK 为 2.0.0，tokens 保持
+1.0.0，两者独立版本化，不能漏发依赖或只发 Android AAR。
 
-1. 为 `designsystem-tokens` 配置 `maven-publish`。
-2. 同一版本同时发布 `designsystem-tokens` 与 `hasiy-design-system-compose`。
-3. 在空 Gradle 缓存、独立 consumer 工程中只声明顶层坐标，验证依赖可解析、编译和运行。
-4. 保存 POM/Gradle Module Metadata、artifact checksum 与 API 快照作为发布证据。
+发布者应发布根 metadata 和所需 target artifact，并通过 `fixtures/android-consumer` 验证
+只声明顶层坐标也能编译组件与 tokens。命令见 [BUILDING.md](BUILDING.md)。本地 fixture 可复用
+第三方缓存；正式外部仓库发布、空缓存解析、运行和 iOS 消费仍需独立验收。
+
+保存 POM/Gradle Module Metadata、artifact checksum 与 API 快照作为发布证据。
 
 ### 3.3 裸 AAR / 离线包
 

@@ -55,6 +55,7 @@ dependencies {
     implementation(project(":designsystem"))
 
     testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

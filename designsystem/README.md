@@ -1,13 +1,13 @@
 # Hasiy Design System Compose SDK
 
-`Hasiy Design System Compose` is a reusable Android Library containing Liquid Glass styled Jetpack Compose and Material3 components. It does not depend on the demo app or its resources.
+`Hasiy Design System Compose` is a Compose Multiplatform library containing Liquid Glass styled Compose and Material3 components for Android and iOS. It does not depend on the demo app or its resources.
 
 ## Requirements
 
 - Android minSdk 26
 - compileSdk 35
-- Kotlin 2.0.21
-- Compose BOM 2024.10.01 / Material3 1.3.1
+- Kotlin 2.1.21 / AGP 8.13.2 / Gradle 9.5.0
+- Compose Multiplatform 1.8.2; Android BOM 2024.10.01 (resolved versions also follow CMP constraints)
 
 ## Add to another project
 
@@ -25,21 +25,20 @@ Build a reusable AAR:
 .\gradlew.bat :designsystem:assembleRelease
 ```
 
-The artifact is generated at `designsystem/build/outputs/aar/hasiy-design-system-release.aar`.
+The artifact is generated at `designsystem/build/outputs/aar/designsystem-release.aar`.
 
-When copying the raw AAR instead of consuming the module/Maven publication, also add its runtime blur engine explicitly:
+Prefer Maven or source modules to a raw AAR. AARs do not bundle tokens, Haze or Compose dependencies.
+The public root coordinate is `top.hasiy:hasiy-design-system-compose:2.0.0`; its transitive token coordinate
+is `top.hasiy:designsystem-tokens:1.0.0`. Both modules have Maven publishing configured. Publish root metadata
+and all required target artifacts together. Local verification uses `build/verification-maven` and the
+independent consumer in `fixtures/android-consumer`; see [BUILDING.md](../BUILDING.md) for commands.
+This repository does not configure remote repository credentials or upload artifacts automatically.
 
-```kotlin
-implementation("dev.chrisbanes.haze:haze:1.4.0")
-```
+Android/JVM API snapshots are checked by `apiCheck`. iOS compile/test jobs require macOS; native ABI snapshots
+and real iOS consumer/visual acceptance remain separate release gates.
 
-The module also configures Maven publication coordinates:
-
-```text
-top.hasiy:hasiy-design-system-compose:1.0.0
-```
-
-Run `publishReleasePublicationToMavenLocal` when local Maven consumption is preferred.
+Custom checkboxes, radio buttons and sliders expose state/actions to accessibility services. Sliders use
+current callbacks and range after recomposition; cancelled gestures do not submit a completed control write.
 
 ## Theme and touch behavior
 

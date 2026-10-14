@@ -12,8 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.takeOrElse
@@ -212,40 +211,40 @@ fun Modifier.glassSurface(
             // 做法與內陰影相同——多層同心 Stroke 疊加，只是這裡把形狀內部裁掉，
             // 讓陰影只留在外側；越靠近邊緣被越多層覆蓋，向外自然衰減。
             if (useSoftShadow) {
-                Modifier.drawBehind {
-                    if (size.minDimension <= 0f) return@drawBehind
+                Modifier.drawWithCache {
                     val outline = shape.createOutline(size, layoutDirection, this)
                     val shadowPath = Path().apply { addOutline(outline) }
                     val spread = config.softShadowSpread.toPx()
-                    if (spread <= 0f) return@drawBehind
                     val offsetY = config.softShadowOffsetY.toPx()
                     val shadowColor = config.softShadowColor.copy(alpha = config.softShadowAlpha)
+                    val painter = createBlurredShadowPainter(spread * SOFT_SHADOW_BLUR_FACTOR, shadowColor)
+                    val layers = List(SOFT_SHADOW_LAYERS) { index ->
+                        val t = (index + 1f) / SOFT_SHADOW_LAYERS
+                        val alpha = config.softShadowAlpha / SOFT_SHADOW_LAYERS *
+                            SOFT_SHADOW_FALLOFF * 2f * t * exp(-SOFT_SHADOW_FALLOFF * t * t)
+                        config.softShadowColor.copy(alpha = alpha) to Stroke(width = spread * t * 2f)
+                    }
+                    onDrawBehind {
+                        if (size.minDimension <= 0f || spread <= 0f) return@onDrawBehind
 
-                    // 形狀內部裁掉，陰影只留在外側；否則半透明的容器基底會透出陰影
-                    clipPath(shadowPath, ClipOp.Difference) {
-                        // 真高斯模糊（平台原生，Android API 28+）：一次繪製，
-                        // 邊緣沒有任何近似造成的階梯；平台不支持時退回多層 Stroke。
-                        val blurredNatively = drawBlurredShadowPath(
-                            path = shadowPath,
-                            offsetY = offsetY,
-                            blurRadiusPx = spread * SOFT_SHADOW_BLUR_FACTOR,
-                            color = shadowColor,
-                        )
-                        if (!blurredNatively) {
-                            // 多層同心 Stroke 疊加。每層權重取高斯的導數，
-                            // 累積後濃度是 exp(-k·d²)，近處平緩、遠處才快速趨零。
-                            val layerAlpha = config.softShadowAlpha / SOFT_SHADOW_LAYERS
-                            translate(top = offsetY) {
-                                repeat(SOFT_SHADOW_LAYERS) { index ->
-                                    val t = (index + 1f) / SOFT_SHADOW_LAYERS
-                                    val alpha = layerAlpha * SOFT_SHADOW_FALLOFF * 2f * t *
-                                        exp(-SOFT_SHADOW_FALLOFF * t * t)
-                                    if (alpha > 0f) {
-                                        drawOutline(
-                                            outline = outline,
-                                            color = config.softShadowColor.copy(alpha = alpha),
-                                            style = Stroke(width = spread * t * 2f)
-                                        )
+                        // 形狀內部裁掉，陰影只留在外側；否則半透明的容器基底會透出陰影
+                        clipPath(shadowPath, ClipOp.Difference) {
+                            // 真高斯模糊（平台原生，Android API 28+）：一次繪製，
+                            // 邊緣沒有任何近似造成的階梯；平台不支持時退回多層 Stroke。
+                            if (painter != null) {
+                                painter(this, shadowPath, offsetY)
+                            } else {
+                                // 多層同心 Stroke 疊加。每層權重取高斯的導數，
+                                // 累積後濃度是 exp(-k·d²)，近處平緩、遠處才快速趨零。
+                                translate(top = offsetY) {
+                                    layers.forEach { (color, stroke) ->
+                                        if (color.alpha > 0f) {
+                                            drawOutline(
+                                                outline = outline,
+                                                color = color,
+                                                style = stroke
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -257,15 +256,14 @@ fun Modifier.glassSurface(
             }
         )
         .clip(shape)
-        .drawBehind {
-            if (size.minDimension <= 0f) return@drawBehind
+        .drawWithCache {
 
             // 同一套方向性漸層放到輸入框、長按區域或窄高導覽列時，會沿長邊被看成
             // 一整條色差。依長短邊比例平滑淡出；一般卡片與接近方形的元件仍保留光感。
-            val elongation = maxOf(
+            val elongation = if (size.minDimension > 0f) maxOf(
                 size.width / size.height,
                 size.height / size.width
-            )
+            ) else 1f
             val directionalEffectScale = when {
                 elongation <= DIRECTIONAL_EFFECT_FADE_START -> 1f
                 elongation >= DIRECTIONAL_EFFECT_FADE_END -> 0f
@@ -288,104 +286,105 @@ fun Modifier.glassSurface(
             // 終點色未指定時與起點同色，退化成原本的「同色不同透明度」；
             // 填充段會指定它，做出 accentLight → accent 的雙色漸層。
             val bodyEndColor = config.bodyEndColor.takeOrElse { config.baseColor }
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to config.baseColor.copy(alpha = resolvedBodyTopAlpha),
-                        1f to bodyEndColor.copy(alpha = resolvedBodyBottomAlpha)
-                    )
-                ),
-                topLeft = Offset.Zero,
-                size = size
+            val bodyBrush = Brush.verticalGradient(
+                0f to config.baseColor.copy(alpha = resolvedBodyTopAlpha),
+                1f to bodyEndColor.copy(alpha = resolvedBodyBottomAlpha),
             )
+            onDrawBehind {
+                if (size.minDimension <= 0f) return@onDrawBehind
+                drawRect(brush = bodyBrush, topLeft = Offset.Zero, size = size)
 
-            val glowCenter = Offset(glowCenterX, glowCenterY)
-            val visible = 1f - hideProgress
-            // 柔光：按壓時提高亮度並略微收斂，鬆手後回到默認亮度與半徑。
-            val innerAlpha = lerp(
-                config.highlightInnerAlpha,
-                (config.highlightInnerAlpha * PRESS_INNER_BOOST).coerceAtMost(PRESS_INNER_MAX),
-                pressProgress
-            ) * visible
-            val outerAlpha = lerp(
-                config.highlightOuterAlpha,
-                (config.highlightOuterAlpha * PRESS_OUTER_BOOST).coerceAtMost(PRESS_OUTER_MAX),
-                pressProgress
-            ) * visible
-            val radiusFactor = lerp(
-                config.highlightRadiusFactor,
-                config.highlightRadiusFactor * PRESS_RADIUS_SHRINK,
-                pressProgress
-            )
-            val glowRadius = size.width * radiusFactor
-            if (
-                glowRadius > 0f &&
-                (innerAlpha > 0f || outerAlpha > 0f) &&
-                directionalEffectScale > 0f
-            ) {
-                drawRect(
-                    brush = Brush.radialGradient(
-                        colorStops = arrayOf(
-                            0f to config.highlightColor.copy(
-                                alpha = innerAlpha * directionalEffectScale
+                val glowCenter = Offset(glowCenterX, glowCenterY)
+                val visible = 1f - hideProgress
+                // 柔光：按壓時提高亮度並略微收斂，鬆手後回到默認亮度與半徑。
+                val innerAlpha = lerp(
+                    config.highlightInnerAlpha,
+                    (config.highlightInnerAlpha * PRESS_INNER_BOOST).coerceAtMost(PRESS_INNER_MAX),
+                    pressProgress
+                ) * visible
+                val outerAlpha = lerp(
+                    config.highlightOuterAlpha,
+                    (config.highlightOuterAlpha * PRESS_OUTER_BOOST).coerceAtMost(PRESS_OUTER_MAX),
+                    pressProgress
+                ) * visible
+                val radiusFactor = lerp(
+                    config.highlightRadiusFactor,
+                    config.highlightRadiusFactor * PRESS_RADIUS_SHRINK,
+                    pressProgress
+                )
+                val glowRadius = size.width * radiusFactor
+                if (
+                    glowRadius > 0f &&
+                    (innerAlpha > 0f || outerAlpha > 0f) &&
+                    directionalEffectScale > 0f
+                ) {
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0f to config.highlightColor.copy(
+                                    alpha = innerAlpha * directionalEffectScale
+                                ),
+                                0.45f to config.highlightColor.copy(
+                                    alpha = outerAlpha * directionalEffectScale
+                                ),
+                                1f to Color.Transparent
                             ),
-                            0.45f to config.highlightColor.copy(
-                                alpha = outerAlpha * directionalEffectScale
+                            center = glowCenter,
+                            radius = glowRadius
+                        ),
+                        topLeft = Offset.Zero,
+                        size = size,
+                        blendMode = config.highlightBlendMode
+                    )
+                }
+                // 指尖高光：疊在柔光之上的小範圍亮點，讓「跟手」的感覺更明確。
+                // 用多段近似高斯的衰減取代線性三段，避免光斑邊緣出現可見的硬邊。
+                if (pressProgress > 0.01f) {
+                    val peak = config.touchSpotPeakAlpha * pressProgress
+                    val spotRadius = minOf(
+                        size.minDimension * TOUCH_SPOT_RADIUS_FACTOR,
+                        TOUCH_SPOT_MAX_RADIUS.toPx()
+                    )
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0f to config.highlightColor.copy(alpha = peak),
+                                0.4f to config.highlightColor.copy(alpha = peak * 0.92f),
+                                0.62f to config.highlightColor.copy(alpha = peak * 0.50f),
+                                0.82f to config.highlightColor.copy(alpha = peak * 0.16f),
+                                1f to Color.Transparent
                             ),
-                            1f to Color.Transparent
+                            center = glowCenter,
+                            radius = spotRadius
                         ),
-                        center = glowCenter,
-                        radius = glowRadius
-                    ),
-                    topLeft = Offset.Zero,
-                    size = size,
-                    blendMode = config.highlightBlendMode
-                )
-            }
-            // 指尖高光：疊在柔光之上的小範圍亮點，讓「跟手」的感覺更明確。
-            // 用多段近似高斯的衰減取代線性三段，避免光斑邊緣出現可見的硬邊。
-            if (pressProgress > 0.01f) {
-                val peak = config.touchSpotPeakAlpha * pressProgress
-                val spotRadius = minOf(
-                    size.minDimension * TOUCH_SPOT_RADIUS_FACTOR,
-                    TOUCH_SPOT_MAX_RADIUS.toPx()
-                )
-                drawRect(
-                    brush = Brush.radialGradient(
-                        colorStops = arrayOf(
-                            0f to config.highlightColor.copy(alpha = peak),
-                            0.4f to config.highlightColor.copy(alpha = peak * 0.92f),
-                            0.62f to config.highlightColor.copy(alpha = peak * 0.50f),
-                            0.82f to config.highlightColor.copy(alpha = peak * 0.16f),
-                            1f to Color.Transparent
-                        ),
-                        center = glowCenter,
-                        radius = spotRadius
-                    ),
-                    topLeft = Offset.Zero,
-                    size = size,
-                    blendMode = config.highlightBlendMode
-                )
+                        topLeft = Offset.Zero,
+                        size = size,
+                        blendMode = config.highlightBlendMode
+                    )
+                }
             }
         }
-        .drawWithContent {
-            drawContent()
-            // 邊緣內陰影：畫在內容之上，沿輪廓由外往內衰減。
-            // 多層同心 Stroke 疊加而成——Stroke 是置中對齊的，外半部分會被 clip 裁掉，
-            // 剩下的內半部分層層相疊，越靠邊緣疊得越多，自然形成由深到淺的漸層。
-            if (config.innerShadowAlpha > 0f && size.minDimension > 0f) {
-                val outline = shape.createOutline(size, layoutDirection, this)
-                val maxWidth = config.innerShadowWidth.toPx()
-                val layerAlpha = config.innerShadowAlpha / INNER_SHADOW_LAYERS
-                repeat(INNER_SHADOW_LAYERS) { index ->
-                    val strokeWidth =
-                        maxWidth * (INNER_SHADOW_LAYERS - index) / INNER_SHADOW_LAYERS * 2f
-                    if (strokeWidth > 0f) {
-                        drawOutline(
-                            outline = outline,
-                            color = config.borderColor.copy(alpha = layerAlpha),
-                            style = Stroke(width = strokeWidth)
-                        )
+        .drawWithCache {
+            val outline = shape.createOutline(size, layoutDirection, this)
+            val maxWidth = config.innerShadowWidth.toPx()
+            val color = config.borderColor.copy(alpha = config.innerShadowAlpha / INNER_SHADOW_LAYERS)
+            val strokes = List(INNER_SHADOW_LAYERS) { index ->
+                Stroke(width = maxWidth * (INNER_SHADOW_LAYERS - index) / INNER_SHADOW_LAYERS * 2f)
+            }
+            onDrawWithContent {
+                drawContent()
+                // 邊緣內陰影：畫在內容之上，沿輪廓由外往內衰減。
+                // 多層同心 Stroke 疊加而成——Stroke 是置中對齊的，外半部分會被 clip 裁掉，
+                // 剩下的內半部分層層相疊，越靠邊緣疊得越多，自然形成由深到淺的漸層。
+                if (config.innerShadowAlpha > 0f && size.minDimension > 0f) {
+                    strokes.forEach { stroke ->
+                        if (stroke.width > 0f) {
+                            drawOutline(
+                                outline = outline,
+                                color = color,
+                                style = stroke
+                            )
+                        }
                     }
                 }
             }

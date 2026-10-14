@@ -85,6 +85,7 @@ fun MetricCard(
     flat: Boolean = false,
     stepRange: ControlRange? = null,
     onStep: (Int) -> Unit = {},
+    numericValue: Float? = metric.value.toFloatOrNull(),
 ) {
     val locked = readOnlyReason != null
     val digital = config.visualStyle == GlassVisualStyle.DIGITAL
@@ -237,7 +238,7 @@ fun MetricCard(
                     // 再多一行根本畫不出來。擺進同一行是唯一不動格高的做法。
                     AdjustScale(
                         range = stepRange,
-                        value = value.toFloatOrNull() ?: stepRange.min,
+                        value = numericValue ?: stepRange.min,
                         config = config,
                         density = density,
                         modifier = Modifier

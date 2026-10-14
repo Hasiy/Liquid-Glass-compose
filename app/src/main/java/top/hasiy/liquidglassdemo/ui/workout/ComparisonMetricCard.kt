@@ -72,6 +72,7 @@ fun ComparisonMetricCard(
     modifier: Modifier = Modifier,
     density: MetricCardDensity = MetricCardDensity.REGULAR,
     flat: Boolean = false,
+    numericValue: Float? = metric.value.toFloatOrNull(),
 ) {
     val comparison = metric.comparison ?: return
     val corner = metricCardCorner(config, density)
@@ -126,7 +127,7 @@ fun ComparisonMetricCard(
         }
 
         ComparisonBars(
-            current = value.toFloatOrNull() ?: 0f,
+            current = numericValue ?: 0f,
             comparison = comparison,
             config = config,
             density = density,

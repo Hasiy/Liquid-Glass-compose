@@ -238,7 +238,7 @@ fun ResponsiveStateMatrixScreen(
                     ) {
                         ControlFocusPanel(
                             metric = adjusting,
-                            currentValue = state.valueOf(adjusting),
+                            currentValue = state.numericValueOf(adjusting) ?: range.min,
                             range = range,
                             config = config,
                             onCommit = { controller.writeValue(adjusting.id, it) },
@@ -819,13 +819,13 @@ private val WriteOutcome.labelRes: Int
 
 /** 儀表讀的是「當前速度」，量程 0–30 km/h。 */
 internal val WorkoutUiState.currentSpeed: Float
-    get() = MetricCatalog.find("speed")?.let { valueOf(it).toFloatOrNull() } ?: 0f
+    get() = MetricCatalog.find("speed")?.let { numericValueOf(it) } ?: 0f
 
 /** 目標速度只有裝置支援調節時才畫標記。 */
 private val WorkoutUiState.targetSpeed: Float?
     get() = MetricCatalog.find("target-speed")
         ?.takeIf { device.isControllable(it.id) }
-        ?.let { valueOf(it).toFloatOrNull() }
+        ?.let { numericValueOf(it) }
 
 private val PAGE_PADDING = 16.dp
 /**

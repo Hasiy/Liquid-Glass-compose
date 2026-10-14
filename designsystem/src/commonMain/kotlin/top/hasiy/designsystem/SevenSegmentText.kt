@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -65,7 +66,11 @@ fun SevenSegmentText(
                         // 目錄外的字元（單位、中文）原樣輸出，不要吞掉
                         Text(text = character.toString(), color = color, fontSize = fontSize)
                     } else {
-                        Canvas(Modifier.size(charWidth, charHeight)) { drawDigit(lit, color) }
+                        Spacer(Modifier.size(charWidth, charHeight).drawWithCache {
+                            val horizontal = horizontalPath(Size(size.width * 0.74f, size.height * 0.10f))
+                            val vertical = verticalPath(Size(size.width * 0.13f, size.height * 0.42f))
+                            onDrawBehind { drawDigit(lit, color, horizontal, vertical) }
+                        })
                     }
                     Spacer(Modifier.size(gap, charHeight))
                 }
@@ -99,7 +104,7 @@ private fun Punctuation(height: Dp, gap: Dp, color: Color, kind: PunctuationKind
  * 段的位置與斜切比例照參考稿的 CSS：橫段 `left 13% / width 74% / height 10%`、
  * 豎段 `width 13% / height 42%`，兩端切成尖角，段與段之間才會留出那道縫。
  */
-private fun DrawScope.drawDigit(lit: String, color: Color) {
+private fun DrawScope.drawDigit(lit: String, color: Color, horizontal: Path, vertical: Path) {
     val w = size.width
     val h = size.height
     val onColor = color
@@ -108,7 +113,7 @@ private fun DrawScope.drawDigit(lit: String, color: Color) {
     fun horizontal(top: Float, segment: Char) {
         translate(left = w * 0.13f, top = top) {
             drawPath(
-                path = horizontalPath(Size(w * 0.74f, h * 0.10f)),
+                path = horizontal,
                 color = if (segment in lit) onColor else offColor,
             )
         }
@@ -117,7 +122,7 @@ private fun DrawScope.drawDigit(lit: String, color: Color) {
     fun vertical(left: Float, top: Float, segment: Char) {
         translate(left = left, top = top) {
             drawPath(
-                path = verticalPath(Size(w * 0.13f, h * 0.42f)),
+                path = vertical,
                 color = if (segment in lit) onColor else offColor,
             )
         }

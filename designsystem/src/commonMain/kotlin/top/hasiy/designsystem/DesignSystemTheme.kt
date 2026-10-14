@@ -9,6 +9,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -38,8 +39,8 @@ fun DesignSystemTheme(
     spec: GlassThemeSpec = GlassThemeSpec.default(GlassVisualStyle.DROP),
     content: @Composable () -> Unit,
 ) {
-    val config = spec.toGlassConfig()
-    val colorScheme = spec.toMaterialColorScheme()
+    val config = remember(spec) { spec.toGlassConfig() }
+    val colorScheme = remember(spec) { spec.toMaterialColorScheme() }
     CompositionLocalProvider(
         LocalGlassConfig provides config,
         LocalGlassThemeSpec provides spec,
@@ -85,11 +86,12 @@ fun DesignSystemTheme(
     palette: ThemePalette,
     content: @Composable () -> Unit,
 ) {
-    val config = palette.toGlassConfig()
-    val colorScheme = palette.toMaterialColorScheme()
+    val config = remember(palette) { palette.toGlassConfig() }
+    val colorScheme = remember(palette) { palette.toMaterialColorScheme() }
+    val spec = remember(palette) { GlassThemeSpec.fromPalette(palette) }
     CompositionLocalProvider(
         LocalGlassConfig provides config,
-        LocalGlassThemeSpec provides GlassThemeSpec.fromPalette(palette),
+        LocalGlassThemeSpec provides spec,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

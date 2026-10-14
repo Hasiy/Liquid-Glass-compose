@@ -31,7 +31,7 @@ data class WorkoutUiState(
     val device: WorkoutDeviceCapability = WorkoutDeviceCapability.IndoorBike,
     val controlWrite: ControlWriteState = ControlWriteState.Idle,
     val layout: Map<String, String> = emptyMap(),
-    val overrides: Map<String, String> = emptyMap(),
+    val overrides: Map<String, Float> = emptyMap(),
     val adjustingSlotKey: String? = null,
     val editingSlotKey: String? = null,
     val groupIndex: Int = 0,
@@ -74,7 +74,12 @@ data class WorkoutUiState(
      *
      * 斷線與暫停時一律讀這裡——參考稿要求「保留最後數值」，不清零也不顯示佔位。
      */
-    fun valueOf(metric: WorkoutMetric): String = overrides[metric.id] ?: metric.value
+    fun valueOf(metric: WorkoutMetric): String = overrides[metric.id]?.let { value ->
+        ControlRange.forMetric(metric.id)?.format(value) ?: value.toString()
+    } ?: metric.value
+
+    /** Raw numbers for control and chart calculations; never parse localized display text. */
+    fun numericValueOf(metric: WorkoutMetric): Float? = overrides[metric.id] ?: metric.value.toFloatOrNull()
 
     /**
      * 指標在卡片上該顯示什麼。

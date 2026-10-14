@@ -7,9 +7,19 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
     id("com.android.library")
+    id("maven-publish")
 }
 group = "top.hasiy"
 version = "1.0.0"
+
+publishing {
+    repositories {
+        maven {
+            name = "Verification"
+            url = uri(rootProject.layout.buildDirectory.dir("verification-maven"))
+        }
+    }
+}
 
 kotlin {
     androidTarget {

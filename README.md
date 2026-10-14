@@ -5,8 +5,10 @@
 玻璃质感由一个 `Modifier.glassSurface` 提供 —— 半透明基底渐变、跟随手指的柔光、边缘描边、接触阴影 —— 再往上包出 Material 3 常用组件的玻璃版本。整套视觉由一个 `GlassConfig` 驱动，可以在深色玻璃与浅色中性两种完全不同的风格之间切换，而不用改任何组件代码。
 
 ```
-├── designsystem/    SDK，可独立发布的 Android Library，不依赖 demo 的任何资源
-└── app/            示例 app，展示全部组件 + 主题实时切换
+├── designsystem/         CMP UI SDK：Android + iOS，不依赖 demo 的资源
+├── designsystem-tokens/  纯 Kotlin 主题令牌：Android + JVM + iOS
+├── fixtures/             独立 Maven 消费验证
+└── app/                  Android 示例 app，展示组件和运动仪表
 ```
 
 ---
@@ -32,9 +34,10 @@
 |---|---|
 | minSdk | 26 |
 | compileSdk / targetSdk | 35 |
-| Kotlin | 2.0.21 |
-| AGP | 8.7.3 |
-| Compose BOM | 2024.10.01（Material3 1.3.1） |
+| Kotlin | 2.1.21 |
+| AGP | 8.13.2 |
+| Gradle / Compose Multiplatform | 9.5.0 / 1.8.2 |
+| Android Compose BOM | 2024.10.01；最终版本受 CMP 传递依赖影响 |
 | 背景模糊引擎 | [haze](https://github.com/chrisbanes/haze) 1.4.0 |
 
 部分效果有 API 门槛，SDK 内部会自动降级，不需要调用方判断：
@@ -68,16 +71,16 @@ dependencies {
 JVM JAR 和完整依赖版本清单，详细要求见
 [SDK_USAGE_AND_EXTENSION_GUIDE.md](SDK_USAGE_AND_EXTENSION_GUIDE.md)。
 
-计划中的 Maven 消费坐标为：
+Maven 消费坐标为：
 
 ```kotlin
 dependencies {
-    implementation("top.hasiy:hasiy-design-system-compose:1.0.0")
+    implementation("top.hasiy:hasiy-design-system-compose:2.0.0")
 }
 ```
 
-当前 tokens artifact 尚未配置 Maven publish task，因此还不能只发布 Android artifact 后
-对外宣称该坐标可用；发布前需先闭合两个 artifact 的发布链与独立 consumer 验证。
+本地发布与独立 consumer 编译已提供验证流程；正式外部仓库需另行配置并验收。
+必须发布 SDK 根 metadata、tokens 和所需 target artifact，不能只上传 Android AAR。
 
 ### 最小示例
 
@@ -362,8 +365,9 @@ SideEffect {
 ./gradlew :app:installDebug
 ```
 
-Maven 发布链当前仍需补齐 `designsystem-tokens` artifact，不能只执行
-`:designsystem:publishReleasePublicationToMavenLocal`。发布与独立 consumer 的验收步骤见
+两个 SDK 模块均已配置 Maven 发布。顶层坐标为 `top.hasiy:hasiy-design-system-compose:2.0.0`，
+tokens 为 `top.hasiy:designsystem-tokens:1.0.0`。必须发布根 metadata 与所需平台 artifact；
+本地发布和独立 consumer 验证命令见 [BUILDING.md](BUILDING.md)。发布与接入约定见
 [SDK_USAGE_AND_EXTENSION_GUIDE.md](SDK_USAGE_AND_EXTENSION_GUIDE.md)。
 
 ## 编译注意事项

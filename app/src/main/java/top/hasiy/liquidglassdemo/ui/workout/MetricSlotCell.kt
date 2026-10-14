@@ -337,6 +337,7 @@ fun MetricSlotCell(
             // 而不是在 MetricCard 裡長出一條「如果有對比資料就……」的分支。
             ComparisonMetricCard(
                 metric = metric,
+                numericValue = state.numericValueOf(metric),
                 value = state.displayValueOf(metric),
                 config = config,
                 modifier = fill,
@@ -346,6 +347,7 @@ fun MetricSlotCell(
         } else {
             MetricCard(
                 metric = metric,
+                numericValue = state.numericValueOf(metric),
                 value = state.displayValueOf(metric),
                 config = config,
                 modifier = fill,

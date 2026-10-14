@@ -1,7 +1,7 @@
 # designsystem 迁移为 CMP（Compose Multiplatform）模块方案
 
 日期：2026-09-22
-状态：待评审，未实施
+状态：共享代码与 Android 迁移已实施；2026-10-13 补齐本地 Maven 发布与 Android/JVM API 快照。iOS 构建、原生 ABI 快照及真实消费者验收仍需 macOS。本文后续迁移步骤保留为原始设计记录。
 
 ## 1. 目标与范围
 

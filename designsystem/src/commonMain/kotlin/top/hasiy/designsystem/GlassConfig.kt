@@ -104,7 +104,9 @@ data class GlassConfig(
 ) {
     companion object {
         /** 預設使用水滴變體 */
-        val Default: GlassConfig = GlassPresets.Drop
+        // Resolve lazily: constructing GlassPresets.Drop initializes GlassConfig first.
+        // Eagerly storing Drop here can permanently capture null during that cycle.
+        val Default: GlassConfig get() = GlassPresets.Drop
     }
 }
 

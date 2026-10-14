@@ -163,7 +163,7 @@ class WorkoutControllerTest {
     fun `write updates optimistically and enters writing`() {
         val c = controller()
         c.writeValue("resistance", 12f)
-        assertEquals("12", c.uiState.overrides["resistance"])
+        assertEquals(12f, c.uiState.overrides["resistance"])
         val state = c.uiState.controlWrite
         assertTrue(state is ControlWriteState.Writing)
         assertEquals("12", (state as ControlWriteState.Writing).target)
@@ -173,18 +173,18 @@ class WorkoutControllerTest {
     fun `write snaps to the range`() {
         val c = controller()
         c.writeValue("resistance", 99f)
-        assertEquals("16", c.uiState.overrides["resistance"])
+        assertEquals(16f, c.uiState.overrides["resistance"])
         c.writeValue("resistance", -5f)
-        assertEquals("1", c.uiState.overrides["resistance"])
+        assertEquals(1f, c.uiState.overrides["resistance"])
     }
 
     @Test
     fun `step moves by exactly one increment`() {
         val c = controller()
         c.stepValue("resistance", +1)
-        assertEquals("9", c.uiState.overrides["resistance"])
+        assertEquals(9f, c.uiState.overrides["resistance"])
         c.stepValue("resistance", -1)
-        assertEquals("8", c.uiState.overrides["resistance"])
+        assertEquals(8f, c.uiState.overrides["resistance"])
     }
 
     /**
@@ -338,13 +338,13 @@ class WorkoutControllerTest {
         assertEquals("steps", c.uiState.metricAt("portrait-0")?.id)
     }
 
-    /** 斷線時保留最後數值，不清零也不顯示佔位。 */
+    /** 尚未確認的樂觀預覽不得在斷線後被當成裝置數值。 */
     @Test
-    fun `values survive a disconnect`() {
+    fun `disconnect discards an unacknowledged preview`() {
         val c = controller()
         c.writeValue("resistance", 11f)
         c.disconnect()
         val metric = c.uiState.metricAt("portrait-4")!!
-        assertEquals("11", c.uiState.valueOf(metric))
+        assertEquals(metric.value, c.uiState.valueOf(metric))
     }
 }

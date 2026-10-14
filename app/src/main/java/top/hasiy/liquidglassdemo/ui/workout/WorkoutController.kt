@@ -44,6 +44,27 @@ class WorkoutController(
     /** 進行中的寫入；換一個指標調節時要先取消上一個，否則舊的 Toast 會蓋掉新的 */
     private var writeJob: Job? = null
 
+    /** Values acknowledged by the simulated device, separate from optimistic display values. */
+    private var confirmedValues: Map<String, Float> = emptyMap()
+    private var pendingMetricId: String? = null
+
+    /** Cancel a pending write and remove its unacknowledged preview. */
+    private fun cancelPendingWrite() {
+        writeJob?.cancel()
+        writeJob = null
+        val metricId = pendingMetricId
+        val confirmed = metricId?.let { confirmedValues[it] }
+        uiState = uiState.copy(
+            overrides = when {
+                metricId == null -> uiState.overrides
+                confirmed == null -> uiState.overrides - metricId
+                else -> uiState.overrides + (metricId to confirmed)
+            },
+            controlWrite = ControlWriteState.Idle,
+        )
+        pendingMetricId = null
+    }
+
     /**
      * 模擬的寫入結果——**這是給 UI 驗收用的開關，不是業務狀態**。
      *
@@ -68,6 +89,7 @@ class WorkoutController(
 
     fun pause() {
         if (uiState.runtime != WorkoutRuntimeState.ACTIVE) return
+        cancelPendingWrite()
         // 暫停時關掉調節浮層：凍結狀態下不該還留著一個能拖的滑桿
         uiState = uiState.copy(
             runtime = WorkoutRuntimeState.PAUSED,
@@ -80,9 +102,9 @@ class WorkoutController(
         uiState = uiState.copy(runtime = WorkoutRuntimeState.ACTIVE)
     }
 
-    /** 斷線。保留最後數值，關掉調節入口。 */
+    /** 斷線。保留已確認數值、撤回待提交預覽，關掉調節入口。 */
     fun disconnect() {
-        writeJob?.cancel()
+        cancelPendingWrite()
         uiState = uiState.copy(
             runtime = WorkoutRuntimeState.DISCONNECTED,
             adjustingSlotKey = null,
@@ -103,7 +125,7 @@ class WorkoutController(
 
     /** 滑動結束達到閾值後真的結束會話。 */
     fun end() {
-        writeJob?.cancel()
+        cancelPendingWrite()
         uiState = uiState.copy(
             runtime = WorkoutRuntimeState.ENDED,
             adjustingSlotKey = null,
@@ -119,7 +141,7 @@ class WorkoutController(
      * 但狀態矩陣要求每一種狀態都能重複進入與退出，所以留一個總的入口。
      */
     fun activate() {
-        writeJob?.cancel()
+        cancelPendingWrite()
         uiState = uiState.copy(
             runtime = WorkoutRuntimeState.ACTIVE,
             adjustingSlotKey = null,
@@ -131,6 +153,7 @@ class WorkoutController(
 
     /** 切換裝置能力，用來演示只讀裝置。 */
     fun useDevice(device: WorkoutDeviceCapability) {
+        cancelPendingWrite()
         uiState = uiState.copy(device = device, adjustingSlotKey = null)
     }
 
@@ -189,27 +212,30 @@ class WorkoutController(
         val range = ControlRange.forMetric(metricId) ?: return
         if (!uiState.device.canAdjust(metricId, uiState.runtime)) return
 
-        val previous = uiState.valueOf(metric)
-        val target = range.format(range.snap(value))
-
-        writeJob?.cancel()
+        if (!value.isFinite()) return
+        cancelPendingWrite()
+        val previous = confirmedValues[metricId] ?: metric.value.toFloatOrNull() ?: return
+        val target = range.snap(value)
+        pendingMetricId = metricId
         uiState = uiState.copy(
             overrides = uiState.overrides + (metricId to target),
-            controlWrite = ControlWriteState.Writing(metricId, target),
+            controlWrite = ControlWriteState.Writing(metricId, range.format(target)),
         )
 
         writeJob = scope.launch {
             delay(WRITE_LATENCY_MS)
+            pendingMetricId = null
+            if (outcome == WriteOutcome.SUCCESS) confirmedValues = confirmedValues + (metricId to target)
             uiState = when (outcome) {
                 WriteOutcome.SUCCESS -> uiState.copy(controlWrite = ControlWriteState.Idle)
                 // 回彈：把樂觀寫進去的值換回原值
                 WriteOutcome.FAILED -> uiState.copy(
                     overrides = uiState.overrides + (metricId to previous),
-                    controlWrite = ControlWriteState.Failed(metricId, previous),
+                    controlWrite = ControlWriteState.Failed(metricId, range.format(previous)),
                 )
                 WriteOutcome.REJECTED -> uiState.copy(
                     overrides = uiState.overrides + (metricId to previous),
-                    controlWrite = ControlWriteState.Rejected(metricId, previous),
+                    controlWrite = ControlWriteState.Rejected(metricId, range.format(previous)),
                 )
             }
             if (outcome != WriteOutcome.SUCCESS) {
@@ -223,7 +249,7 @@ class WorkoutController(
     fun stepValue(metricId: String, direction: Int, outcome: WriteOutcome = simulatedOutcome) {
         val metric = MetricCatalog.find(metricId) ?: return
         val range = ControlRange.forMetric(metricId) ?: return
-        val current = uiState.valueOf(metric).toFloatOrNull() ?: return
+        val current = uiState.numericValueOf(metric) ?: return
         writeValue(metricId, current + direction * range.step, outcome)
     }
 

@@ -2,13 +2,13 @@
 
 本文记录在 Windows 上编译本项目、生成 Debug APK 并安装到 Android 真机时需要特别注意的事项。命令默认在项目根目录执行。
 
-## 1. 已验证的构建基线
+## 1. 当前构建基线（2026-10-13）
 
 | 项目 | 版本或要求 |
 |---|---|
-| Gradle Wrapper | 8.9 |
-| Android Gradle Plugin | 8.7.3 |
-| Kotlin | 2.0.21 |
+| Gradle Wrapper | 9.5.0 |
+| Android Gradle Plugin | 8.13.2 |
+| Kotlin | 2.1.21 |
 | compileSdk / targetSdk | 35 |
 | minSdk | 26 |
 | 推荐构建 JDK | JDK 21 |
@@ -20,7 +20,7 @@ Windows 下应使用 `gradlew.bat`：
 .\gradlew.bat --version
 ```
 
-执行构建前先确认输出中的 `Launcher JVM` 与 `Daemon JVM`。本项目已验证可使用 Oracle JDK 21.0.11。不要无条件使用 Android Studio 自带的 JBR；当前开发机上的 JBR 是 Java 25.0.2，Gradle 8.9 的 Kotlin DSL 会在配置阶段报以下错误：
+执行构建前先确认输出中的 `Launcher JVM` 与 `Daemon JVM`。本项目已验证可使用 Oracle JDK 21.0.11。下述 Java 25.0.2 解析错误来自旧 Gradle 8.9 基线，仅作为历史排查记录。当前 Wrapper 为 9.5.0；不要用旧版失败记录推断新版 JDK 兼容性：
 
 ```text
 java.lang.IllegalArgumentException: 25.0.2
@@ -193,7 +193,7 @@ This version only understands SDK XML versions up to 3 but an SDK XML file of ve
 
 ### Restricted method warning
 
-较新 JDK 可能提示 `java.lang.System::load` 是 restricted method。这是 Gradle/native-platform 与新 JDK 的前向兼容提示。不要为了消除该提示强行改用当前项目不能解析的 JDK 25；以项目可工作的 JDK 21 为准。
+较新 JDK 可能提示 `java.lang.System::load` 是 restricted method。这是 Gradle/native-platform 与新 JDK 的前向兼容提示。当前项目统一使用已验证的 JDK 21；其他 JDK 需独立验证。
 
 ## 7. 安装后的验证
 
@@ -244,3 +244,21 @@ adb -s <adb-device-serial> shell dumpsys activity activities |
 - `topResumedActivity` 指向 `top.hasiyliquidglassdemo/.MainActivity`。
 - 未把 Windows 上被禁用的 iOS target 提示误写成跨平台构建成功。
 - 未清理或覆盖工作区内与本次构建无关的改动。
+
+## 9. 自动验证与独立 Maven 消费
+
+运行 `./gradlew :app:testDebugUnitTest :designsystem:testDebugUnitTest :designsystem-tokens:jvmTest apiCheck :app:assembleDebug`。
+API 快照由 `apiDump` 生成，review diff 后与源码一起提交，不能把自动更新快照当成兼容性通过。
+
+独立消费者 fixture 位于 `fixtures/android-consumer`，只声明发布坐标，不引用本仓库 project：
+
+```powershell
+.\gradlew.bat :designsystem:publishAndroidReleasePublicationToVerificationRepository :designsystem:publishKotlinMultiplatformPublicationToVerificationRepository :designsystem-tokens:publishAndroidReleasePublicationToVerificationRepository :designsystem-tokens:publishJvmPublicationToVerificationRepository :designsystem-tokens:publishKotlinMultiplatformPublicationToVerificationRepository
+.\gradlew.bat -p fixtures/android-consumer assembleDebug
+```
+
+发布目标只在 `build/verification-maven`，不会上传远端仓库。consumer 使用独立构建，可复用第三方依赖缓存；它不是空 Gradle 缓存或外部仓库验收。
+SDK 路径通过 `ANDROID_HOME`/`ANDROID_SDK_ROOT` 配置；没有全局环境变量时可用本地 `local.properties`（不提交）。
+
+真机 UI 测试：明确设置 `ANDROID_SERIAL` 后执行 `:designsystem:connectedDebugAndroidTest`。
+自动化 CI 位于 `.github/workflows/verify.yml`；macOS 编译和测试不能代替 iOS 真机视觉验收。

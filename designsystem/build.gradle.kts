@@ -44,6 +44,27 @@ group = "top.hasiy"
 // publication，group/version 直接沿用這裡的專案屬性。
 version = "2.0.0"
 
+// KMP assigns default target coordinates late in project configuration.
+// Apply the public SDK name after those defaults so metadata and POMs agree.
+afterEvaluate {
+    publishing.publications.withType<MavenPublication>().configureEach {
+        artifactId = when (name) {
+            "kotlinMultiplatform" -> "hasiy-design-system-compose"
+            "androidRelease" -> "hasiy-design-system-compose-android"
+            // Keep Native defaults: disabled Windows targets also reference these names in metadata.
+            else -> artifactId
+        }
+    }
+}
+publishing {
+    repositories {
+        maven {
+            name = "Verification"
+            url = uri(rootProject.layout.buildDirectory.dir("verification-maven"))
+        }
+    }
+}
+
 android {
     namespace = "top.hasiy.designsystem"
     compileSdk = 35
@@ -87,4 +108,6 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    // Espresso 3.7 replaces reflective InputManager.getInstance (removed on newer Android).
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }

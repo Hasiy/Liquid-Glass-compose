@@ -382,7 +382,7 @@ private fun ClusterTopBar(
 
 /** 儀表讀的是「當前阻力」，量程 0–16 級。 */
 internal val WorkoutUiState.currentResistance: Float
-    get() = MetricCatalog.find("resistance")?.let { valueOf(it).toFloatOrNull() } ?: 0f
+    get() = MetricCatalog.find("resistance")?.let { numericValueOf(it) } ?: 0f
 
 /**
  * 這一頁的示例目標值。
